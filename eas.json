@@ -1,0 +1,64 @@
+{
+  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": { "simulator": true },
+      "env": {
+        "EXPO_PUBLIC_RC_API_KEY_IOS": "appl_dev_placeholder",
+        "EXPO_PUBLIC_REVIEW_MODE": "0"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": false,
+        "buildConfiguration": "Release",
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_REVIEW_MODE": "0"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "credentialsSource": "local",
+      "ios": {
+        "buildConfiguration": "Release",
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_REVIEW_MODE": "0"
+      }
+    },
+    "review-submission": {
+      "extends": "production",
+      "env": {
+        "EXPO_PUBLIC_REVIEW_MODE": "1"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "UCHINOMON_ASC_APP_ID_TBD",
+        "appleId": "REDACTED-EMAIL",
+        "appleTeamId": "YXFS993Z4K",
+        "ascApiKeyPath": "./.secrets/AuthKey_REDACTED-KEY-ID.p8",
+        "ascApiKeyId": "REDACTED-KEY-ID",
+        "ascApiKeyIssuerId": "REDACTED-ISSUER-ID"
+      }
+    },
+    "review-submission": {
+      "ios": {
+        "ascAppId": "UCHINOMON_ASC_APP_ID_TBD",
+        "appleId": "REDACTED-EMAIL",
+        "appleTeamId": "YXFS993Z4K",
+        "ascApiKeyPath": "./.secrets/AuthKey_REDACTED-KEY-ID.p8",
+        "ascApiKeyId": "REDACTED-KEY-ID",
+        "ascApiKeyIssuerId": "REDACTED-ISSUER-ID"
+      }
+    }
+  }
+}

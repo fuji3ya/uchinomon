@@ -1,0 +1,229 @@
+name: Uchinomon iOS Cloud Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_testflight:
+        description: "Upload the signed build to TestFlight"
+        type: boolean
+        default: true
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "modules/**"
+      - "assets/**"
+      - "app.json"
+      - "package.json"
+      - "package-lock.json"
+      - "ExportOptions.plist"
+      - ".github/workflows/uchinomon-ios-cloud-build.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "modules/**"
+      - "app.json"
+      - ".github/workflows/uchinomon-ios-cloud-build.yml"
+
+jobs:
+  # Fast unsigned sanity build on every PR (no secrets). Catches Swift/JS compile errors.
+  simulator-build:
+    name: iPhone Simulator Build
+    runs-on: macos-15
+    timeout-minutes: 60
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Expo prebuild (iOS)
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Install CocoaPods
+        working-directory: ios
+        run: pod install --repo-update
+
+      - name: Resolve workspace and scheme
+        id: xc
+        run: |
+          set -euo pipefail
+          WORKSPACE=$(find ios -maxdepth 1 -name "*.xcworkspace" | head -1)
+          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" -json | python3 -c "import sys,json;print(json.load(sys.stdin)['workspace']['schemes'][0])")
+          echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
+          echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+          echo "Resolved workspace=$WORKSPACE scheme=$SCHEME"
+
+      - name: Create simulator
+        run: |
+          set -euo pipefail
+          DEVICE_TYPE=$(xcrun simctl list devicetypes | awk -F '[()]' '/iPhone 15 \(/ { print $2; exit }')
+          RUNTIME=$(xcrun simctl list runtimes available | awk -F ' - ' '/iOS 1[78]\./ { print $NF; exit }')
+          SIMULATOR_UDID=$(xcrun simctl create "Uchinomon Sim" "$DEVICE_TYPE" "$RUNTIME")
+          echo "SIMULATOR_UDID=$SIMULATOR_UDID" >> "$GITHUB_ENV"
+
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace "${{ steps.xc.outputs.workspace }}" \
+            -scheme "${{ steps.xc.outputs.scheme }}" \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+            -skipPackagePluginValidation \
+            build | tee xcodebuild.log
+
+      - name: Upload xcodebuild log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uchinomon-sim-log
+          path: xcodebuild.log
+
+  # Signed archive -> IPA -> TestFlight. Manual dispatch or push to main.
+  signed-build:
+    name: Signed Archive + TestFlight
+    runs-on: macos-26
+    timeout-minutes: 90
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Select newest Xcode (iOS 26 SDK required by App Store)
+        run: |
+          set -euo pipefail
+          LATEST=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1 || true)
+          if [ -z "$LATEST" ]; then
+            LATEST=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          fi
+          echo "Using $LATEST"
+          sudo xcode-select -s "$LATEST/Contents/Developer"
+          xcodebuild -version
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Expo prebuild (iOS)
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Install CocoaPods
+        working-directory: ios
+        run: pod install --repo-update
+
+      - name: Resolve workspace and scheme
+        id: xc
+        run: |
+          set -euo pipefail
+          WORKSPACE=$(find ios -maxdepth 1 -name "*.xcworkspace" | head -1)
+          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" -json | python3 -c "import sys,json;print(json.load(sys.stdin)['workspace']['schemes'][0])")
+          echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
+          echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+          echo "Resolved workspace=$WORKSPACE scheme=$SCHEME"
+
+      - name: Import signing certificate and provisioning profile
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          CERT_PATH="$RUNNER_TEMP/dist_cert.p12"
+          PROFILE_PATH="$RUNNER_TEMP/profile.mobileprovision"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+
+          echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$CERT_PATH"
+          echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security import "$CERT_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain-db
+
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin <<< "$(security cms -D -i "$PROFILE_PATH")")
+          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          echo "Installed provisioning profile UUID: $UUID"
+
+      - name: Archive (signed)
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace "${{ steps.xc.outputs.workspace }}" \
+            -scheme "${{ steps.xc.outputs.scheme }}" \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/Uchinomon.xcarchive" \
+            -skipPackagePluginValidation \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM=YXFS993Z4K \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="Uchinomon App Store Profile" \
+            archive | tee archive.log
+
+      - name: Export IPA
+        run: |
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Uchinomon.xcarchive" \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates | tee export.log
+          ls -la "$RUNNER_TEMP/export"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: uchinomon-ipa
+          path: ${{ runner.temp }}/export/*.ipa
+
+      - name: Upload to TestFlight
+        if: github.event_name == 'push' || inputs.upload_testflight
+        env:
+          ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/private_keys"
+          echo "$ASC_API_KEY_BASE64" | base64 --decode > "$HOME/private_keys/AuthKey_${ASC_API_KEY_ID}.p8"
+          IPA=$(ls "$RUNNER_TEMP"/export/*.ipa | head -1)
+          echo "Uploading $IPA to TestFlight..."
+          xcrun altool --upload-app \
+            -f "$IPA" \
+            -t ios \
+            --apiKey "$ASC_API_KEY_ID" \
+            --apiIssuer "$ASC_API_ISSUER_ID"
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uchinomon-signed-logs
+          path: |
+            archive.log
+            export.log

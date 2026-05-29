@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["UchinomonCutoutModule"]
+  },
+  "android": {
+    "modules": ["app.starvingeffort.uchinomon.cutout.UchinomonCutoutModule"]
+  }
+}
