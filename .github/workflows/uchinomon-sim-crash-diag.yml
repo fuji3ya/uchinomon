@@ -1,0 +1,104 @@
+name: Uchinomon Simulator Crash Diagnostic
+
+# Manual-only. Builds a RELEASE simulator app (embeds the JS bundle so it runs
+# without Metro), launches it on a booted simulator, and dumps any crash report.
+# Purpose: capture the real exception for the on-device launch crash through a
+# channel we control, instead of relying on the user fetching a device .ips.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  sim-crash:
+    name: Simulator launch + crash capture
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Expo prebuild (iOS)
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Install CocoaPods
+        working-directory: ios
+        run: pod install --repo-update
+
+      - name: Resolve workspace and scheme
+        id: xc
+        run: |
+          set -euo pipefail
+          WORKSPACE=$(find ios -maxdepth 1 -name "*.xcworkspace" | head -1)
+          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" -json | python3 -c "import sys,json;print(json.load(sys.stdin)['workspace']['schemes'][0])")
+          echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
+          echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+
+      - name: Build RELEASE for simulator (embeds JS bundle)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace "${{ steps.xc.outputs.workspace }}" \
+            -scheme "${{ steps.xc.outputs.scheme }}" \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath build \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            build | tee xcodebuild.log
+
+      - name: Boot simulator
+        run: |
+          set -euo pipefail
+          DEVICE_TYPE=$(xcrun simctl list devicetypes | awk -F '[()]' '/iPhone 1[5-7] \(/ { print $2; exit }')
+          RUNTIME=$(xcrun simctl list runtimes available | awk -F ' - ' '/iOS 1[789]\.|iOS 2[0-9]\./ { print $NF; exit }')
+          echo "DEVICE_TYPE=$DEVICE_TYPE RUNTIME=$RUNTIME"
+          UDID=$(xcrun simctl create "UchiSim" "$DEVICE_TYPE" "$RUNTIME")
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Install + launch + capture crash
+        run: |
+          set -o pipefail
+          APP=$(find build/Build/Products/Release-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          echo "APP=$APP"
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Info.plist")
+          echo "BUNDLE_ID=$BUNDLE_ID"
+          echo "iOS deployment target of app:"
+          /usr/libexec/PlistBuddy -c "Print :MinimumOSVersion" "$APP/Info.plist" || true
+
+          xcrun simctl install "$UDID" "$APP"
+          echo "===== LAUNCH (console attached) ====="
+          # --console streams the app's stdout/stderr incl. dyld + crash messages
+          set +e
+          timeout 40 xcrun simctl launch --console-pty "$UDID" "$BUNDLE_ID" 2>&1 | tee launch.log
+          echo "launch exit: $?"
+          set -e
+          sleep 5
+
+          echo "===== CRASH REPORTS (DiagnosticReports) ====="
+          DIR="$HOME/Library/Logs/DiagnosticReports"
+          ls -lt "$DIR" 2>/dev/null | head -20 || echo "no DiagnosticReports dir"
+          for f in $(ls -t "$DIR"/*uchi* "$DIR"/Uchi* "$DIR"/*.ips 2>/dev/null | head -3); do
+            echo "----- $f (first 120 lines) -----"
+            head -120 "$f"
+          done
+
+      - name: Upload diagnostic artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uchinomon-sim-crash-diag
+          path: |
+            xcodebuild.log
+            launch.log
+            /Users/runner/Library/Logs/DiagnosticReports/**
