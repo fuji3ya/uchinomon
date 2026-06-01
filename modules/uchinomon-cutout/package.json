@@ -1,0 +1,7 @@
+{
+  "name": "uchinomon-cutout",
+  "version": "1.0.0",
+  "description": "On-device foreground cutout (Apple Vision) for うちのモン",
+  "main": "index.ts",
+  "private": true
+}
