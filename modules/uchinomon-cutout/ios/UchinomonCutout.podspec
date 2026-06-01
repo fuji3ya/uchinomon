@@ -5,8 +5,14 @@ Pod::Spec.new do |s|
   s.description    = 'Runs VNGenerateForegroundInstanceMaskRequest fully on device, no network.'
   s.author         = 'Starving Effort'
   s.homepage       = 'https://docs.expo.dev/modules/'
+  # Must be <= the app's iOS deployment target (16.4), or Expo autolinking
+  # SILENTLY skips this module ("requires iOS 17.0 but app targets 16.4") and
+  # requireNativeModule('UchinomonCutout') throws at launch -> RCTFatal crash.
+  # The iOS 17+ Vision APIs are all guarded with @available(iOS 17.0, *) /
+  # if #available, so a 16.4 deployment target compiles and runs safely
+  # (isSupported() returns false below iOS 17).
   s.platforms      = {
-    :ios => '17.0'
+    :ios => '16.4'
   }
   s.source         = { git: '' }
   s.static_framework = true
