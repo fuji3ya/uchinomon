@@ -20,24 +20,31 @@ export default function LivingZoo() {
   const router = useRouter();
   const [monsters, setMonsters] = useState<Monster[] | null>(null);
   const [welcome, setWelcome] = useState<{ name: string; text: string } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   const now = Date.now();
   const weather = weatherForDay(now);
 
   const load = useCallback(async () => {
-    const results = await monsterStore.syncWorld(Date.now());
-    setMonsters(results.map((r) => r.monster));
-    const withSummary = results.filter((r) => r.summaryText);
-    if (withSummary.length) {
-      const r = withSummary[withSummary.length - 1];
-      setWelcome({ name: r.monster.card.name, text: r.summaryText! });
-    } else {
-      setWelcome(null);
+    try {
+      const results = await monsterStore.syncWorld(Date.now());
+      setMonsters(results.map((r) => r.monster));
+      const withSummary = results.filter((r) => r.summaryText);
+      if (withSummary.length) {
+        const r = withSummary[withSummary.length - 1];
+        setWelcome({ name: r.monster.card.name, text: r.summaryText! });
+      } else {
+        setWelcome(null);
+      }
+    } catch (e: any) {
+      // never let a launch-time async error become an unhandled rejection / RCTFatal
+      setMonsters([]);
+      setErr(e?.message ?? String(e));
     }
   }, []);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   return (
@@ -48,6 +55,12 @@ export default function LivingZoo() {
           <Text style={styles.weatherText}>{WEATHER_PHRASE[weather] ?? WEATHER_LABEL[weather]}</Text>
         </View>
       </View>
+
+      {err && (
+        <View style={[styles.welcomeCard, { backgroundColor: '#ffe3ec' }]}>
+          <Text selectable style={{ fontSize: 12, color: '#b3245e', fontWeight: '700' }}>起動エラー（捕捉済）: {err}</Text>
+        </View>
+      )}
 
       {welcome && (
         <View style={styles.welcomeCard}>

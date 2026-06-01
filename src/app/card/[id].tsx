@@ -15,8 +15,12 @@ export default function CardDetail() {
 
   useEffect(() => {
     (async () => {
-      const all = await monsterStore.all();
-      setM(all.find((x) => x.id === decodeURIComponent(id ?? '')) ?? null);
+      try {
+        const all = await monsterStore.all();
+        setM(all.find((x) => x.id === decodeURIComponent(id ?? '')) ?? null);
+      } catch {
+        setM(null);
+      }
     })();
   }, [id]);
 

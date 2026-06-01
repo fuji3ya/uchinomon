@@ -3,6 +3,21 @@ import { StatusBar } from 'expo-status-bar';
 import { ScrollView, Text } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
+// Safety net: on a release build an unhandled JS error (incl. async/microtask
+// rejections that ErrorBoundary can't catch) is escalated to RCTFatal → SIGABRT
+// hard crash. Keep the app alive instead so issues are diagnosable on-device.
+{
+  const g = globalThis as any;
+  if (g?.ErrorUtils?.setGlobalHandler && !g.__uchiGuard) {
+    g.__uchiGuard = true;
+    const prev = g.ErrorUtils.getGlobalHandler?.();
+    g.ErrorUtils.setGlobalHandler((e: any, isFatal?: boolean) => {
+      console.warn('[uchi] caught', isFatal ? 'FATAL' : 'error', e?.message, '\n', e?.stack);
+      if (!isFatal && typeof prev === 'function') prev(e, isFatal); // pass through non-fatal
+    });
+  }
+}
+
 // Root navigator. Tabs (どうぶつえん / ずかん / せってい) + the create-flow and
 // monetization screens as pushed routes. No NativeTabs / no worklet splash.
 export default function RootLayout() {

@@ -15,7 +15,7 @@ export default function Zukan() {
 
   useFocusEffect(
     useCallback(() => {
-      monsterStore.all().then(setList);
+      monsterStore.all().then(setList).catch(() => setList([]));
     }, []),
   );
 

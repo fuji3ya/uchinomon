@@ -13,7 +13,7 @@ export default function Settings() {
 
   useFocusEffect(
     useCallback(() => {
-      monsterStore.isPro().then(setPro);
+      monsterStore.isPro().then(setPro).catch(() => setPro(false));
     }, []),
   );
 
