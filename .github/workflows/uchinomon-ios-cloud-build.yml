@@ -171,6 +171,14 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
         run: |
           set -o pipefail
+          # Expo prebuild bakes a literal CFBundleVersion ("1") into Info.plist,
+          # so the CURRENT_PROJECT_VERSION xcodebuild setting does NOT change it
+          # and altool rejects the upload as a duplicate bundle version.
+          # Patch the app target's Info.plist directly to the unique run number.
+          PLIST=$(find ios -maxdepth 2 -name Info.plist -not -path "*/Pods/*" | head -1)
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $BUILD_NUMBER" "$PLIST"
+          echo "CFBundleVersion in $PLIST -> $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST")"
           xcodebuild \
             -workspace "${{ steps.xc.outputs.workspace }}" \
             -scheme "${{ steps.xc.outputs.scheme }}" \
