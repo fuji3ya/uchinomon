@@ -42,6 +42,19 @@ jobs:
           echo "workspace=$WORKSPACE" >> "$GITHUB_OUTPUT"
           echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve Swift packages (retry)
+        run: |
+          set +e
+          for i in 1 2 3; do
+            echo "resolve attempt $i"
+            xcodebuild -resolvePackageDependencies \
+              -workspace "${{ steps.xc.outputs.workspace }}" \
+              -scheme "${{ steps.xc.outputs.scheme }}" \
+              -derivedDataPath build && break
+            sleep 10
+          done
+          echo "resolve done"
+
       - name: Build RELEASE for simulator (embeds JS bundle)
         run: |
           set -o pipefail
@@ -53,8 +66,11 @@ jobs:
             -destination "generic/platform=iOS Simulator" \
             -derivedDataPath build \
             -skipPackagePluginValidation \
+            -disableAutomaticPackageResolution \
             CODE_SIGNING_ALLOWED=NO \
-            build | tee xcodebuild.log
+            build 2>&1 | tee xcodebuild.log
+          # Surface the real error lines if the build failed
+          tail -40 xcodebuild.log
 
       - name: Boot simulator
         run: |
