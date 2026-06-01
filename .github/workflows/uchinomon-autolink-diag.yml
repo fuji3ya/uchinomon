@@ -1,0 +1,47 @@
+name: Uchinomon Autolink Diagnostic
+
+# Manual-only, fast (no archive). Prints the CI-side autolinking state for the
+# local native module so we can see WHY UchinomonCutout is not in pod install.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  diag:
+    name: Autolink diag
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: npm ci
+        run: npm ci
+
+      - name: Is the local module present after npm ci?
+        run: |
+          echo "=== modules/ dir (git-tracked source) ==="
+          ls -la modules/uchinomon-cutout || echo "NO modules/uchinomon-cutout"
+          echo "=== node_modules/uchinomon-cutout (file: dep symlink) ==="
+          ls -la node_modules/uchinomon-cutout || echo "NO node_modules/uchinomon-cutout"
+          echo "=== expo-module.config.json ==="
+          cat modules/uchinomon-cutout/expo-module.config.json || true
+
+      - name: Does CI autolinking RESOLVE the module? (project root cwd)
+        run: |
+          echo "=== resolve from project root ==="
+          npx expo-modules-autolinking resolve --platform apple --json 2>/dev/null \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);const a=Array.isArray(j)?j:(j.modules||Object.values(j));const h=a.filter(m=>(m.packageName||'').includes('uchinomon'));console.log('cutout entries:',h.length, JSON.stringify(h));console.log('all packages:',a.map(m=>m.packageName).join(', '));})" || echo "resolve failed"
+
+      - name: Expo prebuild + pod install, then inspect Podfile/Pods
+        run: |
+          npx expo prebuild --platform ios --no-install
+          echo "=== ios/Podfile (use_expo_modules + any uchinomon) ==="
+          grep -niE "use_expo_modules|uchinomon|pod '" ios/Podfile || echo "(no matches)"
+          cd ios && pod install --repo-update 2>&1 | tee /tmp/pod.log | tail -5
+          echo "=== UchinomonCutout in pod install? ==="
+          grep -i "uchinomon" /tmp/pod.log || echo "NOT in pod install output"
+          echo "=== ExpoModulesProvider generated? lists module? ==="
+          find . -name "ExpoModulesProvider.swift" -exec echo "--- {} ---" \; -exec cat {} \; 2>/dev/null | grep -iE "Uchinomon|class ExpoModulesProvider|getModuleClasses" | head -20 || echo "no provider"
