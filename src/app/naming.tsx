@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import * as FileSystem from 'expo-file-system/legacy';
 import { analyze } from 'uchinomon-cutout';
 
 import { buildMonster, deriveAttributes, mapHexToColorWords, stableHash } from '../engine';
@@ -43,19 +44,36 @@ export default function Naming() {
 
   const [saving, setSaving] = useState(false);
 
+  // Copy a captured temp image into the app's permanent document dir so monsters
+  // survive app restarts (ImagePicker / cutout write to temporary storage).
+  async function persist(src: string, suffix: string): Promise<string> {
+    try {
+      const dir = FileSystem.documentDirectory + 'monsters/';
+      await FileSystem.makeDirectoryAsync(dir, { intermediates: true }).catch(() => {});
+      const dest = `${dir}${pixelHash}-${suffix}.png`;
+      await FileSystem.copyAsync({ from: src, to: dest });
+      return dest;
+    } catch {
+      return src; // fall back to the temp uri rather than fail intake
+    }
+  }
+
   async function confirm() {
     if (saving) return;
     setSaving(true);
     const now = Date.now();
     if (!(await monsterStore.canIntake(now))) {
+      setSaving(false);
       router.replace('/parent-gate');
       return;
     }
     const number = await monsterStore.nextNumber();
     const renderMode: RenderMode = mode === 'paper' || !cut ? 'paper' : 'cut';
+    const originalUri = await persist(original!, 'orig');
+    const cutUri = cut ? await persist(cut, 'cut') : null;
     const monster = buildMonster({
       pixelHash, aspect: aspectNum, number, createdAtMs: now,
-      originalUri: original!, cutUri: cut || null, renderMode,
+      originalUri, cutUri, renderMode,
       overrideName: name.trim() || candidates[0], attributes,
     });
     await monsterStore.addMonster(monster, now);

@@ -34,20 +34,30 @@ export default function Settings() {
           <Text style={styles.privacy}>お子さまの えと なまえは、うちのモンの サーバーには おくりません。すべて この端末の中で しょりされます。</Text>
         </View>
 
-        <Row label="あそびかた" onPress={() => {}} />
-        <Row label="このアプリについて" onPress={() => {}} />
+        <InfoRow
+          label="あそびかた"
+          body={'1. 「とりこむ」で こどもの おえかきを えらぶよ\n2. きりぬいて、なまえを つけよう\n3. どうぶつえんで モンが くらしはじめるよ\n4. ときどき ひらくと、るすちゅうの できごとが ずかんに ふえていくよ'}
+        />
+        <InfoRow
+          label="このアプリについて"
+          body={'うちのモン  v1.0\n\nおえかきが いきものに なって、どうぶつえんで くらすアプリだよ。きりぬき・ずかん・るすちゅうの できごとは すべて この端末の中で つくられ、サーバーには おくられません。'}
+        />
       </ScrollView>
       <BottomBar active="settings" />
     </View>
   );
 }
 
-function Row({ label, onPress }: { label: string; onPress: () => void }) {
+function InfoRow({ label, body }: { label: string; body: string }) {
+  const [open, setOpen] = useState(false);
   return (
-    <Pressable style={styles.row} onPress={onPress}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowChevron}>›</Text>
-    </Pressable>
+    <View style={styles.rowWrap}>
+      <Pressable style={styles.row} onPress={() => setOpen((v) => !v)}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={styles.rowChevron}>{open ? '⌄' : '›'}</Text>
+      </Pressable>
+      {open && <Text style={styles.rowBody}>{body}</Text>}
+    </View>
   );
 }
 
@@ -60,7 +70,9 @@ const styles = StyleSheet.create({
   upgradeText: { color: '#fff', fontWeight: '800', fontSize: 14 },
   sectionHead: { fontSize: 13, fontWeight: '800', color: C.inkSoft, marginBottom: 6 },
   privacy: { fontSize: 12.5, color: '#6c6480', lineHeight: 19 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: C.card, borderRadius: RADIUS.btn, padding: 16, marginBottom: 10, ...SHADOW.soft },
+  rowWrap: { backgroundColor: C.card, borderRadius: RADIUS.btn, marginBottom: 10, overflow: 'hidden', ...SHADOW.soft },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
   rowLabel: { fontSize: 15, fontWeight: '700', color: C.ink },
   rowChevron: { fontSize: 22, color: C.muted, fontWeight: '800' },
+  rowBody: { paddingHorizontal: 16, paddingBottom: 14, marginTop: -4, fontSize: 12.5, color: '#6c6480', lineHeight: 20 },
 });
