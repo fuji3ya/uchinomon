@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { buildMonster, deriveAttributes, stableHash } from '../engine';
+import { analyze } from 'uchinomon-cutout';
+
+import { buildMonster, deriveAttributes, mapHexToColorWords, stableHash } from '../engine';
 import type { RenderMode } from '../engine/types';
 import { monsterStore } from '../engine/monster-store';
 import { C, RADIUS, SHADOW } from '../theme/tokens';
@@ -16,7 +18,19 @@ export default function Naming() {
   const createdAtMs = useMemo(() => Date.now(), []);
   const pixelHash = useMemo(() => String(stableHash((original ?? '') + ':' + createdAtMs)), [original, createdAtMs]);
   const aspectNum = Number(aspect) || 1;
-  const attributes = useMemo(() => deriveAttributes(pixelHash, aspectNum), [pixelHash, aspectNum]);
+
+  // Real dominant colours from the actual drawing (on-device). Until analysis
+  // resolves, colours fall back to "カラフル" so nothing false is shown.
+  const [colorWords, setColorWords] = useState<string[]>([]);
+  useEffect(() => {
+    let alive = true;
+    analyze(cut || original || '')
+      .then((a) => { if (alive) setColorWords(mapHexToColorWords(a.colors)); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [cut, original]);
+
+  const attributes = useMemo(() => deriveAttributes(pixelHash, aspectNum, colorWords), [pixelHash, aspectNum, colorWords]);
   const candidates = useMemo(
     () => buildMonster({ pixelHash, aspect: aspectNum, number: 0, createdAtMs, originalUri: '', cutUri: null, renderMode: 'cut', attributes }).card.nameCandidates,
     [pixelHash, aspectNum, createdAtMs, attributes],

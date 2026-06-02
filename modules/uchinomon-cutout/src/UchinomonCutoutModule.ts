@@ -6,9 +6,12 @@ import { requireNativeModule } from 'expo';
 // hard crash on launch (no red screen in release). Catching it here turns that
 // fatal into a graceful "unsupported" so the app launches and we can SEE the
 // real state instead of crashing.
+export type ImageAnalysis = { colors: string[]; width: number; height: number };
+
 type CutoutNative = {
   isSupported(): boolean;
   cutoutForeground(uri: string): Promise<string>;
+  analyze(uri: string): Promise<ImageAnalysis>;
   __loadError?: string;
 };
 
@@ -22,6 +25,7 @@ try {
     cutoutForeground: async () => {
       throw new Error('UchinomonCutout native module is not linked: ' + msg);
     },
+    analyze: async () => ({ colors: [], width: 0, height: 0 }),
     __loadError: msg,
   };
 }

@@ -48,14 +48,16 @@ export const DISCOVERIES_BY_CATEGORY: Partial<Record<Category, string[]>> = {
   のりもの: ['にじの みちを はしりぬけた', 'みんなを のせて おさんぽ した'],
 };
 
-// ③ monster-zukan voice template (figurative/dex tone). Slots filled deterministically.
+// ③ monster-zukan voice (figurative/dex tone). %COLOR% is a full phrase that
+// already ends with "いろの" (or "カラフルな"); only real colour + size are
+// asserted, the rest is whimsical fantasy. No literal category / horn claims.
 export const MONSTER_VOICE_TEMPLATES = [
-  '%ZONE%で みつかった、%FEATURE%を もつ %CAT%。%SPEED%、%FOOD%を たべる。きげんが いいと しっぽを ふって「%CRY%」と なくらしい。',
-  '%COLOR%いろの からだが とくちょうの %CAT%。%ZONE%に すみ、%FOOD%が だいすき。%PERSONA%な せいかくで、よく 「%CRY%」と なく。',
+  '%ZONE%で みつかった、%COLOR% %SIZE% いきもの。%FOOD%が だいすきで、きげんが いいと しっぽを ふって「%CRY%」と なくらしい。',
+  '%COLOR% %SIZE% からだの ふしぎな いきもの。%ZONE%に すみ、%FOOD%が だいすき。%PERSONA%な せいかくで、よく「%CRY%」と なく。',
 ] as const;
 
-// ④ kids voice template (gentle, read-with-child tone).
+// ④ kids voice (gentle, read-with-child tone).
 export const KIDS_VOICE_TEMPLATES = [
-  '%COLOR%いろの からだに、%FEATURE2%が あるよ。とっても %PERSONA%で、%ZONE_SHORT%で あそぶのが だいすき。%FOOD%を もぐもぐ たべるんだって。',
-  '%COLOR%いろの かわいい %CAT%だよ。%FOOD%が すきで、%PERSONA%な おともだち。きょうも げんきに 「%CRY%」って ないているよ。',
+  '%COLOR% %SIZE% いきものだよ。とっても %PERSONA%で、%ZONE_SHORT%で あそぶのが だいすき。%FOOD%を もぐもぐ たべるんだって。',
+  '%COLOR% かわいい いきものだよ。%FOOD%が すきで、%PERSONA%な おともだち。きょうも げんきに「%CRY%」って ないているよ。',
 ] as const;

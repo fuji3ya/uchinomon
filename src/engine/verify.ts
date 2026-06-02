@@ -35,6 +35,20 @@ console.log('  こども:', m1.card.kidsVoice);
 check('no unfilled %SLOT% in monsterVoice', !/%[A-Z]/.test(m1.card.monsterVoice), m1.card.monsterVoice);
 check('no unfilled %SLOT% in kidsVoice', !/%[A-Z]/.test(m1.card.kidsVoice), m1.card.kidsVoice);
 
+console.log('\n— real colours (analyze → mapHexToColorWords) —');
+import { buildDexCard, deriveAttributes, mapHexToColorWords } from './index';
+const words = mapHexToColorWords(['#3a1f4d', '#1c1620', '#c0392b']); // purple, near-black, red
+console.log('  hex → words:', JSON.stringify(words));
+const attrReal = deriveAttributes('abc123drawing', 0.6, words);
+const cardReal = buildDexCard({ number: 1, attributes: attrReal, seed: m1.seed, createdAtMs: created });
+console.log('  モンずかん:', cardReal.monsterVoice);
+check('real-colour voice has no unfilled slot', !/%[A-Z]/.test(cardReal.monsterVoice), cardReal.monsterVoice);
+check('real-colour voice mentions a mapped colour', words.some((w) => cardReal.monsterVoice.includes(w)));
+const attrNone = deriveAttributes('xyz', 1.0, []);
+const cardNone = buildDexCard({ number: 2, attributes: attrNone, seed: 123, createdAtMs: created });
+console.log('  no-colour voice:', cardNone.monsterVoice);
+check('no-colour falls back to カラフルな (not カラフルいろの)', cardNone.monsterVoice.includes('カラフルな') && !cardNone.monsterVoice.includes('カラフルいろの'));
+
 console.log('\n— whileAway determinism (5 days away) —');
 const lastOpen = created;
 const now = created + 5 * DAY;

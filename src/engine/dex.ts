@@ -1,71 +1,81 @@
 // Deterministic dex-card generation (ENGINE_SPEC §2). No LLM, no network.
-// Given on-device attributes + a stable seed, produce the full collectible card
-// exactly as zukan-card.html consumes it.
+//
+// Honesty rule: claims about VISIBLE attributes (color, size) must match the
+// actual drawing — colors come from on-device pixel analysis (analyze()), size
+// from the bounding-box aspect. Whimsical flavor (personality, favourite food,
+// cry, zone, diet) is seed-derived fantasy and does NOT assert anything visible,
+// so it can vary freely. We never claim a literal category ("vehicle"/"bird")
+// or features ("3 horns") we can't verify.
 
-import {
-  CRIES,
-  COLOR_WORDS,
-  FOODS,
-  KIDS_VOICE_TEMPLATES,
-  MONSTER_VOICE_TEMPLATES,
-  NAME_PARTS,
-  PERSONALITIES,
-} from '../data/vocab';
+import { CRIES, FOODS, KIDS_VOICE_TEMPLATES, MONSTER_VOICE_TEMPLATES, NAME_PARTS, PERSONALITIES } from '../data/vocab';
 import { makeRng, stableHash } from './seed';
 import type { Attributes, Category, DexCard, Diet, SizeClass, Zone } from './types';
 
-const CATEGORIES: Category[] = ['きょうりゅう', 'いきもの', 'とり', 'むし', 'うみのいきもの', 'のりもの', 'ふしぎ'];
+// Creature-only categories (this is a monster app — no "vehicle"). Used purely
+// for internal name/flavor variety, never printed as a factual claim.
+const CATEGORIES: Category[] = ['きょうりゅう', 'いきもの', 'とり', 'むし', 'うみのいきもの', 'ふしぎ'];
 
 const ZONE_BY_CATEGORY: Record<Category, Zone> = {
-  きょうりゅう: 'おにわ ぞく',
-  いきもの: 'もり ぞく',
-  とり: 'そら ぞく',
-  むし: 'もり ぞく',
-  うみのいきもの: 'みず ぞく',
-  のりもの: 'おにわ ぞく',
-  ふしぎ: 'よる ぞく',
+  きょうりゅう: 'おにわ ぞく', いきもの: 'もり ぞく', とり: 'そら ぞく', むし: 'もり ぞく',
+  うみのいきもの: 'みず ぞく', のりもの: 'おにわ ぞく', ふしぎ: 'よる ぞく',
 };
-
 const ZONE_SHORT: Record<Zone, string> = {
-  'おにわ ぞく': 'おにわ',
-  'もり ぞく': 'もり',
-  'みず ぞく': 'みずべ',
-  'そら ぞく': 'そら',
-  'よる ぞく': 'よるのにわ',
+  'おにわ ぞく': 'おにわ', 'もり ぞく': 'もり', 'みず ぞく': 'みずべ', 'そら ぞく': 'そら', 'よる ぞく': 'よるのにわ',
 };
-
 const DIET_BY_CATEGORY: Record<Category, Diet> = {
-  きょうりゅう: 'しょくぶつ食',
-  いきもの: 'なんでも食',
-  とり: 'しょくぶつ食',
-  むし: 'しょくぶつ食',
-  うみのいきもの: 'なんでも食',
-  のりもの: 'ひかり食',
-  ふしぎ: 'ひかり食',
+  きょうりゅう: 'しょくぶつ食', いきもの: 'なんでも食', とり: 'しょくぶつ食', むし: 'しょくぶつ食',
+  うみのいきもの: 'なんでも食', のりもの: 'ひかり食', ふしぎ: 'ひかり食',
 };
 
-// Deterministic attribute stand-in derived from the drawing's pixel hash + the
-// bounding-box aspect ratio measured at cutout time. Real on-device color/shape
-// extraction (Core Image / Core ML) replaces the color/category guess later; the
-// contract stays the same so nothing downstream changes.
-export function deriveAttributes(pixelHash: string, aspect: number): Attributes {
+// Japanese colour vocabulary with representative RGB. analyze() returns hex of
+// the drawing's dominant pixels; we snap each to the nearest word.
+const PALETTE: { word: string; rgb: [number, number, number] }[] = [
+  { word: 'あか', rgb: [220, 50, 47] }, { word: 'ピンク', rgb: [255, 120, 170] },
+  { word: 'だいだい', rgb: [245, 150, 40] }, { word: 'きいろ', rgb: [245, 215, 60] },
+  { word: 'みどり', rgb: [85, 180, 90] }, { word: 'みずいろ', rgb: [90, 200, 235] },
+  { word: 'あお', rgb: [40, 110, 210] }, { word: 'むらさき', rgb: [150, 75, 180] },
+  { word: 'ちゃいろ', rgb: [130, 90, 60] }, { word: 'しろ', rgb: [245, 245, 245] },
+  { word: 'くろ', rgb: [40, 40, 45] }, { word: 'はいいろ', rgb: [150, 150, 150] },
+];
+
+function hexToRgb(hex: string): [number, number, number] | null {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
+  return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : null;
+}
+
+// Map analyze() hex colours → up to 3 distinct Japanese colour words.
+export function mapHexToColorWords(hexes: string[]): string[] {
+  const out: string[] = [];
+  for (const hex of hexes) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) continue;
+    let best = PALETTE[0], bestD = Infinity;
+    for (const p of PALETTE) {
+      const d = (p.rgb[0] - rgb[0]) ** 2 + (p.rgb[1] - rgb[1]) ** 2 + (p.rgb[2] - rgb[2]) ** 2;
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    if (!out.includes(best.word)) out.push(best.word);
+    if (out.length >= 3) break;
+  }
+  return out;
+}
+
+function colorPhrase(colors: string[]): string {
+  if (colors.length === 0) return 'カラフルな';
+  if (colors.length === 1) return colors[0] + 'いろの';
+  if (colors.length === 2) return colors[0] + 'と ' + colors[1] + 'いろの';
+  return colors[0] + '・' + colors[1] + '・' + colors[2] + 'いろの';
+}
+const SIZE_WORD: Record<SizeClass, string> = { ちいさい: 'ちいさな', ふつう: '', おおきい: 'おおきな' };
+
+// Attributes. Colours are REAL when provided by analyze(); category/size are the
+// only other inputs and category is never surfaced as a literal claim.
+export function deriveAttributes(pixelHash: string, aspect: number, realColors?: string[]): Attributes {
   const rng = makeRng(stableHash('attr:' + pixelHash));
   const category = rng.pick(CATEGORIES);
-  const colorCount = rng.range(1, 3);
-  const colors: string[] = [];
-  while (colors.length < colorCount) {
-    const c = rng.pick(COLOR_WORDS);
-    if (!colors.includes(c)) colors.push(c);
-  }
   const sizeClass: SizeClass = aspect > 1.4 ? 'おおきい' : aspect < 0.7 ? 'ちいさい' : 'ふつう';
-  return {
-    category,
-    colors,
-    sizeClass,
-    aspect,
-    hasHorns: rng.chance(0.4),
-    hasLegs: rng.chance(0.7),
-  };
+  const colors = realColors && realColors.length ? realColors.slice(0, 3) : [];
+  return { category, colors, sizeClass, aspect, hasHorns: false, hasLegs: true };
 }
 
 function nameCandidates(category: Category, rng: ReturnType<typeof makeRng>): string[] {
@@ -76,33 +86,18 @@ function nameCandidates(category: Category, rng: ReturnType<typeof makeRng>): st
   return [...out];
 }
 
-function feature(attr: Attributes, rng: ReturnType<typeof makeRng>): string {
-  const parts: string[] = [];
-  if (attr.hasHorns) {
-    const n = rng.range(2, 7);
-    parts.push(`せなかに ${n}つの ${rng.pick(attr.colors)}いろの ツノ`);
-  }
-  if (parts.length === 0) parts.push(`${attr.colors[0]}いろの まるい からだ`);
-  return parts.join('と ');
-}
-
 function fill(tpl: string, map: Record<string, string>): string {
-  return tpl.replace(/%([A-Z_0-9]+)%/g, (_, k) => map[k] ?? '');
+  return tpl.replace(/%([A-Z_0-9]+)%/g, (_, k) => map[k] ?? '').replace(/\s+/g, ' ').trim();
 }
 
 export function buildDexCard(params: {
-  number: number;
-  attributes: Attributes;
-  seed: number;
-  createdAtMs: number;
-  overrideName?: string;
+  number: number; attributes: Attributes; seed: number; createdAtMs: number; overrideName?: string;
 }): DexCard {
   const { number, attributes: attr, seed, createdAtMs, overrideName } = params;
   const rng = makeRng(seed);
 
   const candidates = nameCandidates(attr.category, rng);
   const name = overrideName?.trim() || candidates[0];
-
   const personality = rng.pick(PERSONALITIES);
   const favorite = rng.pick(FOODS);
   const cry = rng.pick(CRIES);
@@ -113,23 +108,11 @@ export function buildDexCard(params: {
   const heightM = Math.round((0.2 + rng.next() * 0.6) * sizeFactor * 10) / 10;
   const weightKg = Math.round((0.8 + rng.next() * 2.5) * sizeFactor * 10) / 10;
 
-  const feat = feature(attr, rng);
-  const feat2 = attr.hasHorns ? `${rng.pick(attr.colors)}いろの ツノ` : 'まんまるの め';
-  const speed = attr.hasLegs ? 'あしが はやく' : 'ふわふわ うかび';
-
   const slots: Record<string, string> = {
-    ZONE: zone,
-    ZONE_SHORT: ZONE_SHORT[zone],
-    FEATURE: feat,
-    FEATURE2: feat2,
-    CAT: attr.category,
-    SPEED: speed,
-    FOOD: favorite,
-    CRY: cry,
-    COLOR: attr.colors[0],
-    PERSONA: personality,
+    ZONE: zone, ZONE_SHORT: ZONE_SHORT[zone],
+    COLOR: colorPhrase(attr.colors), SIZE: SIZE_WORD[attr.sizeClass],
+    FOOD: favorite, CRY: cry, PERSONA: personality,
   };
-
   const monsterVoice = fill(rng.pick(MONSTER_VOICE_TEMPLATES), slots);
   const kidsVoice = fill(rng.pick(KIDS_VOICE_TEMPLATES), slots);
 
@@ -137,15 +120,8 @@ export function buildDexCard(params: {
   const discoveredDateLabel = `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()} はっけん`;
 
   return {
-    number,
-    name,
-    nameCandidates: candidates,
-    diet,
-    zone,
-    category: attr.category,
-    sizeClass: attr.sizeClass,
-    monsterVoice,
-    kidsVoice,
+    number, name, nameCandidates: candidates, diet, zone, category: attr.category, sizeClass: attr.sizeClass,
+    monsterVoice, kidsVoice,
     stats: { heightM, weightKg, favorite, cry, personality },
     discoveredDateLabel,
   };

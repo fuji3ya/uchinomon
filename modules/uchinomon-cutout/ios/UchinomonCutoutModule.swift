@@ -32,6 +32,51 @@ public class UchinomonCutoutModule: Module {
         }
       }
     }
+
+    // analyze(uri) -> { colors: ["#rrggbb", ...], width, height }.
+    // Dominant colors of the drawing's actual pixels (skips transparent + the
+    // paper-white background) so the dex text matches what the child drew.
+    AsyncFunction("analyze") { (uri: String, promise: Promise) in
+      DispatchQueue.global(qos: .userInitiated).async {
+        guard let cg = Self.loadNormalizedCGImage(uri: uri) else {
+          promise.resolve(["colors": [String](), "width": 0, "height": 0])
+          return
+        }
+        let colors = Self.dominantColors(cg, maxColors: 3)
+        promise.resolve(["colors": colors, "width": cg.width, "height": cg.height])
+      }
+    }
+  }
+
+  // Render to a small RGBA buffer and bucket the non-transparent, non-paper
+  // pixels into coarse color bins; return the most common bins as hex.
+  static func dominantColors(_ cg: CGImage, maxColors: Int) -> [String] {
+    let w = 48, h = 48
+    var buf = [UInt8](repeating: 0, count: w * h * 4)
+    let cs = CGColorSpaceCreateDeviceRGB()
+    guard let ctx = CGContext(data: &buf, width: w, height: h, bitsPerComponent: 8,
+                              bytesPerRow: w * 4, space: cs,
+                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return [] }
+    ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+
+    var counts: [Int: Int] = [:]      // quantized key -> count
+    var sums: [Int: (Int, Int, Int, Int)] = [:]  // key -> (r,g,b,n) for averaging
+    for i in stride(from: 0, to: buf.count, by: 4) {
+      let r = Int(buf[i]), g = Int(buf[i+1]), b = Int(buf[i+2]), a = Int(buf[i+3])
+      if a < 128 { continue }                       // transparent (cut background)
+      if r > 232 && g > 222 && b > 205 { continue }  // paper-white / cream background
+      if r < 28 && g < 28 && b < 28 { continue }     // near-black crayon outline
+      let key = (r >> 5 << 6) | (g >> 5 << 3) | (b >> 5)  // 3 bits/channel
+      counts[key, default: 0] += 1
+      let s = sums[key] ?? (0, 0, 0, 0)
+      sums[key] = (s.0 + r, s.1 + g, s.2 + b, s.3 + 1)
+    }
+    let top = counts.sorted { $0.value > $1.value }.prefix(maxColors)
+    return top.compactMap { (key, _) in
+      guard let s = sums[key], s.3 > 0 else { return nil }
+      let r = s.0 / s.3, g = s.1 / s.3, b = s.2 / s.3
+      return String(format: "#%02x%02x%02x", r, g, b)
+    }
   }
 
   enum CutoutError: Error {
