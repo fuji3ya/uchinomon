@@ -54,6 +54,21 @@ const mk = (h: string, created: number, n: number) =>
   const afterSecond = (await s.all())[0].log.length;
   check('idempotent: no duplicate log entries on re-open', afterSecond === afterFirst, `${afterFirst}→${afterSecond}`);
 
+  console.log('\n— welcome persists across same-day re-open (the re-nav bug) —');
+  s = new MonsterStore(memKV());
+  await s.addMonster(mk('d4', t0, 1), t0);
+  await s.syncWorld(t0 + 7 * DAY);            // new day → generates + sets welcome
+  const w1 = await s.getWelcome();
+  check('welcome set after a day away', w1.length >= 1, w1);
+  await s.syncWorld(t0 + 7 * DAY);            // same-day re-open (re-nav) → no-op
+  const w2 = await s.getWelcome();
+  check('welcome STILL there after same-day re-open', w2.length === w1.length);
+  await s.clearWelcome();
+  check('welcome cleared on dismiss', (await s.getWelcome()).length === 0);
+  // next calendar day with no monster activity still does not crash
+  const r3 = await s.syncWorld(t0 + 8 * DAY);
+  check('next-day sync returns monsters', r3.length === 1);
+
   console.log('\n' + (failures === 0 ? '✅ ALL STORE CHECKS PASSED' : `❌ ${failures} CHECK(S) FAILED`));
   process.exit(failures === 0 ? 0 : 1);
 })();

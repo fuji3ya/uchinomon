@@ -20,7 +20,7 @@ export default function LivingZoo() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [monsters, setMonsters] = useState<Monster[] | null>(null);
-  const [welcome, setWelcome] = useState<{ name: string; text: string } | null>(null);
+  const [welcome, setWelcome] = useState<{ name: string; text: string }[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
   const weather = weatherForDay(Date.now());
@@ -29,13 +29,18 @@ export default function LivingZoo() {
     try {
       const results = await monsterStore.syncWorld(Date.now());
       setMonsters(results.map((r) => r.monster));
-      const withSummary = results.filter((r) => r.summaryText);
-      setWelcome(withSummary.length ? { name: withSummary[withSummary.length - 1].monster.card.name, text: withSummary[withSummary.length - 1].summaryText! } : null);
+      // welcome is persisted in the store so it survives Home re-navigation
+      setWelcome(await monsterStore.getWelcome());
     } catch (e: any) {
       setMonsters([]);
       setErr(e?.message ?? String(e));
     }
   }, []);
+
+  async function dismissWelcome() {
+    await monsterStore.clearWelcome();
+    setWelcome([]);
+  }
 
   useEffect(() => { void load(); }, [load]);
 
@@ -52,10 +57,21 @@ export default function LivingZoo() {
             <Text selectable style={{ fontSize: 12, color: '#b3245e', fontWeight: '700' }}>起動エラー（捕捉済）: {err}</Text>
           </View>
         )}
-        {welcome && (
+        {welcome.length > 0 && (
           <View style={styles.welcomeCard}>
-            <Text style={styles.welcomeTitle}>{welcome.name}が ぼうけんから かえってきたよ</Text>
-            <View style={styles.giftRow}><View style={styles.giftDot} /><Text style={styles.giftText}>{welcome.text}</Text></View>
+            <Pressable onPress={dismissWelcome} hitSlop={10} style={styles.welcomeClose}>
+              <Text style={styles.welcomeCloseText}>✕</Text>
+            </Pressable>
+            <Text style={styles.welcomeTitle}>
+              {welcome[0].name}
+              {welcome.length > 1 ? ` ほか ${welcome.length - 1}ぴき` : ''}が ぼうけんから かえってきたよ
+            </Text>
+            {welcome.slice(0, 3).map((w, i) => (
+              <View key={i} style={styles.giftRow}>
+                <View style={styles.giftDot} />
+                <Text style={styles.giftText}>{welcome.length > 1 ? `${w.name}: ` : ''}{w.text}</Text>
+              </View>
+            ))}
           </View>
         )}
 
@@ -115,7 +131,9 @@ const styles = StyleSheet.create({
   brand: { fontSize: 19, fontWeight: '800', color: '#fff', textShadowColor: 'rgba(40,20,60,.45)', textShadowRadius: 6, textShadowOffset: { width: 0, height: 1 } },
   weatherChip: { backgroundColor: 'rgba(255,255,255,.82)', borderRadius: RADIUS.pill, paddingHorizontal: 12, paddingVertical: 5, ...SHADOW.soft },
   weatherText: { fontSize: 12, fontWeight: '800', color: C.accentDeep },
-  welcomeCard: { marginHorizontal: 16, backgroundColor: 'rgba(255,253,250,.95)', borderRadius: RADIUS.card, padding: 14, ...SHADOW.card },
+  welcomeCard: { marginHorizontal: 16, backgroundColor: 'rgba(255,253,250,.95)', borderRadius: RADIUS.card, padding: 14, paddingRight: 34, ...SHADOW.card },
+  welcomeClose: { position: 'absolute', top: 8, right: 10, width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
+  welcomeCloseText: { fontSize: 15, color: C.muted, fontWeight: '800' },
   welcomeTitle: { fontSize: 15, fontWeight: '800', color: C.ink, lineHeight: 22 },
   giftRow: { flexDirection: 'row', gap: 8, marginTop: 8, backgroundColor: '#fff7e6', borderRadius: 12, padding: 10, alignItems: 'flex-start' },
   giftDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.gold, marginTop: 5 },

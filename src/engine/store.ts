@@ -3,6 +3,7 @@
 // 30-day view-lock) is unit-testable on node; the RN app supplies an
 // AsyncStorage-backed adapter (store.native.ts).
 
+import { dayOrdinal } from './seed';
 import { whileAwayEvents } from './whileAway';
 import type { Monster } from './types';
 
@@ -15,6 +16,9 @@ const K_MONSTERS = 'uchinomon.monsters.v1';
 const K_LASTOPEN = 'uchinomon.lastOpen.v1';
 const K_INTAKE = 'uchinomon.intake.v1'; // {"day":<ordinal>,"count":<n>}
 const K_PRO = 'uchinomon.pro.v1';
+const K_WELCOME = 'uchinomon.welcome.v1'; // [{name,text}] pending "おかえり" cards
+
+export type Welcome = { name: string; text: string };
 
 const DAY = 86_400_000;
 const FREE_DAILY_INTAKE = 1;
@@ -79,27 +83,44 @@ export class MonsterStore {
   async syncWorld(nowMs: number): Promise<{ monster: Monster; summaryText: string | null }[]> {
     const list = await this.all();
     const lastRaw = await this.kv.get(K_LASTOPEN);
-    // 0 = never opened before → simulate each monster's backlog since its own
-    // creation (capped by MAX_DAYS in whileAwayEvents).
     const lastOpen = lastRaw ? Number(lastRaw) : 0;
-    const out: { monster: Monster; summaryText: string | null }[] = [];
 
+    // Only run the while-away pass when a NEW CALENDAR DAY has begun (or on the
+    // very first open). Re-navigating to Home within the same day is a no-op, so
+    // the "おかえり" card (persisted separately) is NOT wiped and lastOpen is not
+    // churned. Events are deterministic per day, so same-day reruns add nothing.
+    const newDay = lastOpen === 0 || dayOrdinal(nowMs) > dayOrdinal(lastOpen);
+    if (!newDay) {
+      return list.map((m) => ({ monster: m, summaryText: null }));
+    }
+
+    const out: { monster: Monster; summaryText: string | null }[] = [];
+    const welcomes: Welcome[] = [];
     for (const m of list) {
       const res = whileAwayEvents({
         monsterId: m.id, seed: m.seed, attributes: m.attributes, card: m.card,
-        // a monster never has events before it existed
-        lastOpenMs: Math.max(lastOpen, m.createdAtMs), nowMs,
+        lastOpenMs: Math.max(lastOpen, m.createdAtMs), nowMs, // never before it existed
       });
-      // append only entries not already logged (idempotent on repeated opens)
       const seen = new Set(m.log.map((e) => e.dayOrdinal + '|' + e.text));
       for (const e of res.newEntries) {
         if (!seen.has(e.dayOrdinal + '|' + e.text)) m.log.push(e);
       }
       out.push({ monster: m, summaryText: res.summary?.text ?? null });
+      if (res.summary) welcomes.push({ name: m.card.name, text: res.summary.text });
     }
 
     await this.save(list);
     await this.kv.set(K_LASTOPEN, String(nowMs));
+    if (welcomes.length) await this.kv.set(K_WELCOME, JSON.stringify(welcomes));
     return out;
+  }
+
+  // Pending "おかえり" cards survive Home re-navigation until dismissed.
+  async getWelcome(): Promise<Welcome[]> {
+    const raw = await this.kv.get(K_WELCOME);
+    return raw ? (JSON.parse(raw) as Welcome[]) : [];
+  }
+  async clearWelcome(): Promise<void> {
+    await this.kv.set(K_WELCOME, '[]');
   }
 }
