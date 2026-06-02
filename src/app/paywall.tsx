@@ -12,7 +12,6 @@ const BENEFITS = [
   'おえかきを むせいげんに とりこめる',
   'ずかんカードが ずっと のこる（30日で きえない）',
   'はっけんログが ずっと ふえつづける',
-  'たかがしつの iCloud バックアップ',
 ];
 
 export default function Paywall() {
@@ -43,14 +42,14 @@ export default function Paywall() {
         </View>
 
         <Pressable style={[styles.planMain, busy && { opacity: 0.6 }]} onPress={purchasePro} disabled={busy}>
-          <Text style={styles.planMainTitle}>Pro（つきがく）</Text>
-          <Text style={styles.planMainPrice}>¥480 / つき</Text>
+          <Text style={styles.planMainTitle}>Pro（かいきり）</Text>
+          <Text style={styles.planMainPrice}>¥1,000（1かいだけ）</Text>
         </Pressable>
 
         <Text style={styles.privacy}>
-          お子さまの えと なまえは、うちのモンの サーバーには おくりません。すべて この端末の中で しょりされます（Pro の バックアップは あなた自身の iCloud だけに ほぞんされます）。
+          お子さまの えと なまえは、うちのモンの サーバーには おくりません。すべて この端末の中で しょりされます。
         </Text>
-        <Text style={styles.legal}>いつでも かいやく できます。じどう こうしんは App Store の せっていから。</Text>
+        <Text style={styles.legal}>1かいの おしはらいで ずっと つかえます（つきがくでは ありません）。</Text>
       </ScrollView>
     </SafeAreaView>
   );

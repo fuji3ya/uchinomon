@@ -151,12 +151,15 @@ export function whileAwayEvents(params: {
   const firstDay = Math.max(startDay + 1, endDay - MAX_DAYS + 1);
 
   const newEntries: DiscoveryEntry[] = [];
+  let completion: DiscoveryEntry | null = null; // most recent arc-completion, promoted to summary
   for (let day = firstDay; day <= endDay; day++) {
     const cover = arcCover(baseSeed, day);
     if (cover) {
       // arc days are sequential adventure-flavored entries (no double emit on the start day)
       const text = cover.arc.days[cover.offset];
-      newEntries.push({ dayOrdinal: day, dateLabel: dateLabel(day * 86_400_000), text, kind: 'ぼうけん' });
+      const entry: DiscoveryEntry = { dayOrdinal: day, dateLabel: dateLabel(day * 86_400_000), text, kind: 'ぼうけん' };
+      newEntries.push(entry);
+      if (cover.offset === cover.arc.days.length - 1) completion = entry; // arc finished today
       continue;
     }
     if (!adventureHappened(baseSeed, day)) continue;
@@ -165,7 +168,9 @@ export function whileAwayEvents(params: {
     newEntries.push({ dayOrdinal: day, dateLabel: dateLabel(day * 86_400_000), text, kind, itemId });
   }
 
-  return { newEntries, summary: newEntries.length ? newEntries[newEntries.length - 1] : null };
+  // Prefer an arc completion as the "おかえり" headline; else the most recent event.
+  const summary = completion ?? (newEntries.length ? newEntries[newEntries.length - 1] : null);
+  return { newEntries, summary };
 }
 
 // Seed the very first log entry at intake ("はじめて みつかった").

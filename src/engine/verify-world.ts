@@ -87,7 +87,7 @@ const check = (n: string, c: boolean, extra?: unknown) => {
   check('なかよし references a sibling', friendEntries.every((e) => e.text.includes('ココ') || e.text.includes('ルル')));
   const solo = whileAwayEvents({ ...base, siblingNames: [], lastOpenMs: 1000 * DAY2, nowMs: 1060 * DAY2 });
   check('no なかよし when solo', solo.newEntries.every((e) => e.kind !== 'なかよし'));
-  check('summary is last entry', r1.summary === (r1.newEntries.length ? r1.newEntries[r1.newEntries.length - 1] : null));
+  check('summary is one of the new entries (or null)', r1.summary === null || r1.newEntries.includes(r1.summary));
 
   console.log('\n— mini-story arcs: sequential, single-active, replay-stable —');
   const wa = await import('./whileAway');
@@ -112,6 +112,11 @@ const check = (n: string, c: boolean, extra?: unknown) => {
   }
   check('arc offsets valid range', okOffsets);
   check('at least one arc start (offset 0) in window', sawStart);
+  // spec ⑤: if an arc completes in the window, it is promoted to summary
+  const arcFinals = new Set(VV.ARCS.map((a) => a.days[a.days.length - 1]));
+  const completedInWindow = long.newEntries.some((e) => arcFinals.has(e.text));
+  check('arc completion promoted to summary when present',
+    !completedInWindow || (long.summary !== null && arcFinals.has(long.summary.text)));
 
   console.log('\n' + (failures === 0 ? '✅ ALL WORLD CHECKS PASSED' : `❌ ${failures} CHECK(S) FAILED`));
   process.exit(failures === 0 ? 0 : 1);
