@@ -7,7 +7,7 @@
 // so it can vary freely. We never claim a literal category ("vehicle"/"bird")
 // or features ("3 horns") we can't verify.
 
-import { CRIES, FOODS, KIDS_VOICE_TEMPLATES, MONSTER_VOICE_TEMPLATES, NAME_PARTS, PERSONALITIES } from '../data/vocab';
+import { CRIES, FOODS, HABITS, KIDS_VOICE_TEMPLATES, MONSTER_VOICE_TEMPLATES, NAME_PARTS, PERSONALITIES, SPECIALS } from '../data/vocab';
 import { makeRng, stableHash } from './seed';
 import type { Attributes, Category, DexCard, Diet, SizeClass, Zone } from './types';
 
@@ -60,11 +60,16 @@ export function mapHexToColorWords(hexes: string[]): string[] {
   return out;
 }
 
+// Append "いろの", but avoid doubling for words that already end in "いろ"
+// (みずいろ → みずいろの, not みずいろいろの).
+function withIro(w: string): string {
+  return w.endsWith('いろ') ? w + 'の' : w + 'いろの';
+}
 function colorPhrase(colors: string[]): string {
   if (colors.length === 0) return 'カラフルな';
-  if (colors.length === 1) return colors[0] + 'いろの';
-  if (colors.length === 2) return colors[0] + 'と ' + colors[1] + 'いろの';
-  return colors[0] + '・' + colors[1] + '・' + colors[2] + 'いろの';
+  if (colors.length === 1) return withIro(colors[0]);
+  if (colors.length === 2) return colors[0] + 'と ' + withIro(colors[1]);
+  return colors[0] + '・' + colors[1] + '・' + withIro(colors[2]);
 }
 const SIZE_WORD: Record<SizeClass, string> = { ちいさい: 'ちいさな', ふつう: '', おおきい: 'おおきな' };
 
@@ -101,6 +106,8 @@ export function buildDexCard(params: {
   const personality = rng.pick(PERSONALITIES);
   const favorite = rng.pick(FOODS);
   const cry = rng.pick(CRIES);
+  const habit = rng.pick(HABITS);
+  const special = rng.pick(SPECIALS);
   const zone = ZONE_BY_CATEGORY[attr.category];
   const diet = DIET_BY_CATEGORY[attr.category];
 
@@ -111,7 +118,7 @@ export function buildDexCard(params: {
   const slots: Record<string, string> = {
     ZONE: zone, ZONE_SHORT: ZONE_SHORT[zone],
     COLOR: colorPhrase(attr.colors), SIZE: SIZE_WORD[attr.sizeClass],
-    FOOD: favorite, CRY: cry, PERSONA: personality,
+    FOOD: favorite, CRY: cry, PERSONA: personality, HABIT: habit, SPECIAL: special,
   };
   const monsterVoice = fill(rng.pick(MONSTER_VOICE_TEMPLATES), slots);
   const kidsVoice = fill(rng.pick(KIDS_VOICE_TEMPLATES), slots);
