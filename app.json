@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "uchinomon",
     "userInterfaceStyle": "light",
-    "owner": "REDACTED",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.starvingeffort.uchinomon",
@@ -107,10 +106,7 @@
       "reactCompiler": false
     },
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "REDACTED"
-      }
+      "router": {}
     }
   }
 }
