@@ -24,16 +24,10 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#fdf6e9' } }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="capture" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="capture-choice" />
-        <Stack.Screen name="naming" />
-        <Stack.Screen name="card/[id]" />
-        <Stack.Screen name="parent-gate" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="purchase-success" options={{ presentation: 'modal' }} />
-      </Stack>
+      {/* Routes auto-register from the file tree — do NOT enumerate Stack.Screen
+          (a name that doesn't resolve creates a phantom screen whose loadRoute()
+          is undefined → "Cannot read property 'ErrorBoundary' of undefined"). */}
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#fdf6e9' } }} />
     </SafeAreaProvider>
   );
 }

@@ -12,13 +12,9 @@ const TABS: { name: string; label: string; icon: SFSymbol }[] = [
 ];
 
 export default function TabsLayout() {
-  return (
-    <Tabs tabBar={(props) => <UchiTabBar {...props} />} screenOptions={{ headerShown: false }}>
-      <Tabs.Screen name="index" />
-      <Tabs.Screen name="zukan" />
-      <Tabs.Screen name="settings" />
-    </Tabs>
-  );
+  // index / zukan / settings auto-register from the file tree. The custom tab
+  // bar renders the TABS array explicitly, so discovery order doesn't matter.
+  return <Tabs tabBar={(props) => <UchiTabBar {...props} />} screenOptions={{ headerShown: false }} />;
 }
 
 function UchiTabBar({ state, navigation }: any) {
