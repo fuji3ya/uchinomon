@@ -66,7 +66,7 @@ public class UchinomonCutoutModule: Module {
       if a < 128 { continue }                       // transparent (cut background)
       if r > 232 && g > 222 && b > 205 { continue }  // paper-white / cream background
       if r < 28 && g < 28 && b < 28 { continue }     // near-black crayon outline
-      let key = (r >> 5 << 6) | (g >> 5 << 3) | (b >> 5)  // 3 bits/channel
+      let key = ((r >> 5) << 6) | ((g >> 5) << 3) | (b >> 5)  // 3 bits/channel
       counts[key, default: 0] += 1
       let s = sums[key] ?? (0, 0, 0, 0)
       sums[key] = (s.0 + r, s.1 + g, s.2 + b, s.3 + 1)
