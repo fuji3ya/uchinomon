@@ -40,8 +40,6 @@ export interface Attributes {
   colors: string[]; // up to 3 kid-friendly color words, e.g. ['みどり','にじいろ']
   sizeClass: SizeClass;
   aspect: number; // bounding-box width/height ratio
-  hasHorns: boolean;
-  hasLegs: boolean;
 }
 
 export interface DiscoveryEntry {

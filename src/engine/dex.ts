@@ -80,7 +80,7 @@ export function deriveAttributes(pixelHash: string, aspect: number, realColors?:
   const category = rng.pick(CATEGORIES);
   const sizeClass: SizeClass = aspect > 1.4 ? 'おおきい' : aspect < 0.7 ? 'ちいさい' : 'ふつう';
   const colors = realColors && realColors.length ? realColors.slice(0, 3) : [];
-  return { category, colors, sizeClass, aspect, hasHorns: false, hasLegs: true };
+  return { category, colors, sizeClass, aspect };
 }
 
 function nameCandidates(category: Category, rng: ReturnType<typeof makeRng>): string[] {

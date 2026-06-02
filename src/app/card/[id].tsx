@@ -97,7 +97,7 @@ export default function CardDetail() {
           <Pressable style={styles.keep} onPress={() => router.push('/parent-gate')}>
             <View style={styles.keepIcon}><Text style={{ fontSize: 18 }}>🔖</Text></View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.keepTitle}>このカードを ずっと のこす / シェア</Text>
+              <Text style={styles.keepTitle}>このカードを ずっと のこす</Text>
               <Text style={styles.keepSub}>おとなの かたへ（Face ID）</Text>
             </View>
             <Text style={styles.keepChevron}>›</Text>
