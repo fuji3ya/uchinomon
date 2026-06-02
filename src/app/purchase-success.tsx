@@ -14,7 +14,7 @@ export default function PurchaseSuccess() {
         <Text style={styles.lead}>
           うちのモン Pro が つかえるように なりました。{'\n'}おもいでを いっぱい のこそうね。
         </Text>
-        <Pressable style={styles.btn} onPress={() => router.replace('/(tabs)')}>
+        <Pressable style={styles.btn} onPress={() => router.replace('/')}>
           <Text style={styles.btnText}>どうぶつえんに もどる</Text>
         </Pressable>
       </View>

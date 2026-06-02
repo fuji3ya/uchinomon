@@ -3,44 +3,42 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { monsterStore } from '../../engine/store.native';
-import { C, RADIUS, SHADOW } from '../../theme/tokens';
+import { BottomBar, BOTTOM_BAR_HEIGHT } from '../components/bottom-bar';
+import { monsterStore } from '../engine/store.native';
+import { C, RADIUS, SHADOW } from '../theme/tokens';
 
 export default function Settings() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [pro, setPro] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      monsterStore.isPro().then(setPro).catch(() => setPro(false));
-    }, []),
-  );
+  useFocusEffect(useCallback(() => { monsterStore.isPro().then(setPro).catch(() => setPro(false)); }, []));
 
   return (
-    <ScrollView style={[styles.screen, { paddingTop: insets.top + 8 }]} contentContainerStyle={{ paddingBottom: 30 }}>
-      <Text style={styles.title}>せってい</Text>
+    <View style={{ flex: 1, backgroundColor: C.paper }}>
+      <ScrollView style={{ flex: 1, paddingHorizontal: 18, paddingTop: insets.top + 8 }} contentContainerStyle={{ paddingBottom: BOTTOM_BAR_HEIGHT + 20 }}>
+        <Text style={styles.title}>せってい</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.planLabel}>いまの プラン</Text>
-        <Text style={styles.planValue}>{pro ? 'うちのモン Pro' : 'むりょう'}</Text>
-        {!pro && (
-          <Pressable style={styles.upgrade} onPress={() => router.push('/parent-gate')}>
-            <Text style={styles.upgradeText}>Pro を みてみる（おとなの かた）</Text>
-          </Pressable>
-        )}
-      </View>
+        <View style={styles.card}>
+          <Text style={styles.planLabel}>いまの プラン</Text>
+          <Text style={styles.planValue}>{pro ? 'うちのモン Pro' : 'むりょう'}</Text>
+          {!pro && (
+            <Pressable style={styles.upgrade} onPress={() => router.push('/parent-gate')}>
+              <Text style={styles.upgradeText}>Pro を みてみる（おとなの かた）</Text>
+            </Pressable>
+          )}
+        </View>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionHead}>プライバシー</Text>
-        <Text style={styles.privacy}>
-          お子さまの えと なまえは、うちのモンの サーバーには おくりません。すべて この端末の中で しょりされます。
-        </Text>
-      </View>
+        <View style={styles.card}>
+          <Text style={styles.sectionHead}>プライバシー</Text>
+          <Text style={styles.privacy}>お子さまの えと なまえは、うちのモンの サーバーには おくりません。すべて この端末の中で しょりされます。</Text>
+        </View>
 
-      <Row label="あそびかた" onPress={() => {}} />
-      <Row label="このアプリについて" onPress={() => {}} />
-    </ScrollView>
+        <Row label="あそびかた" onPress={() => {}} />
+        <Row label="このアプリについて" onPress={() => {}} />
+      </ScrollView>
+      <BottomBar active="settings" />
+    </View>
   );
 }
 
@@ -54,7 +52,6 @@ function Row({ label, onPress }: { label: string; onPress: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: C.paper, paddingHorizontal: 18 },
   title: { fontSize: 24, fontWeight: '800', color: C.ink, marginBottom: 12 },
   card: { backgroundColor: C.card, borderRadius: RADIUS.card, padding: 16, marginBottom: 12, ...SHADOW.soft },
   planLabel: { fontSize: 12, color: C.mutedInk, fontWeight: '700' },

@@ -4,26 +4,23 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { Monster } from '../../engine/types';
-import { monsterStore } from '../../engine/store.native';
-import { C, RADIUS, SHADOW } from '../../theme/tokens';
+import { BottomBar, BOTTOM_BAR_HEIGHT } from '../components/bottom-bar';
+import { monsterStore } from '../engine/store.native';
+import type { Monster } from '../engine/types';
+import { C, RADIUS, SHADOW } from '../theme/tokens';
 
 export default function Zukan() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [list, setList] = useState<Monster[]>([]);
 
-  useFocusEffect(
-    useCallback(() => {
-      monsterStore.all().then(setList).catch(() => setList([]));
-    }, []),
-  );
+  useFocusEffect(useCallback(() => { monsterStore.all().then(setList).catch(() => setList([])); }, []));
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
       <Text style={styles.title}>ずかん</Text>
       <Text style={styles.count}>{list.length} ぴき はっけん</Text>
-      <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: BOTTOM_BAR_HEIGHT + 16 }]} showsVerticalScrollIndicator={false}>
         {list.length === 0 ? (
           <Text style={styles.empty}>まだ ずかんは からっぽ。{'\n'}「とりこむ」で さいしょの 1ぴきを むかえてね。</Text>
         ) : (
@@ -39,6 +36,7 @@ export default function Zukan() {
           })
         )}
       </ScrollView>
+      <BottomBar active="zukan" />
     </View>
   );
 }
@@ -47,7 +45,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.paper, paddingHorizontal: 18 },
   title: { fontSize: 24, fontWeight: '800', color: C.ink },
   count: { fontSize: 13, color: C.mutedInk, marginTop: 2, marginBottom: 10 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingBottom: 20 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   empty: { fontSize: 14, color: C.mutedInk, textAlign: 'center', lineHeight: 22, width: '100%', marginTop: 40 },
   cell: { width: '30%', alignItems: 'center' },
   thumb: { width: '100%', aspectRatio: 1, borderRadius: RADIUS.chip, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW.soft },
