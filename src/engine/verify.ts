@@ -52,7 +52,7 @@ check('no-colour falls back to カラフルな (not カラフルいろの)', car
 console.log('\n— whileAway determinism (5 days away) —');
 const lastOpen = created;
 const now = created + 5 * DAY;
-const args = { monsterId: m1.id, seed: m1.seed, attributes: m1.attributes, card: m1.card, lastOpenMs: lastOpen, nowMs: now };
+const args = { monsterId: m1.id, seed: m1.seed, attributes: m1.attributes, card: m1.card, lastOpenMs: lastOpen, nowMs: now, siblingNames: [] };
 const a = whileAwayEvents(args);
 const b = whileAwayEvents(args);
 check('same input → identical events', JSON.stringify(a) === JSON.stringify(b));

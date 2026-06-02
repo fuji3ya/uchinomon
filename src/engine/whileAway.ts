@@ -1,30 +1,136 @@
 // While-away world simulation (ENGINE_SPEC §4) — the retention core.
-// When the app opens, deterministically compute what each monster "did" on each
-// calendar day since the last open. Pure: same (monster, lastOpen, now) -> same
-// events. No server, no push payload content; everything is recomputed on open.
+// Pure: same (monster, lastOpen, now, siblingNames) -> same events. No server,
+// no Date.now/Math.random. Independent seed streams per concern so arc detection
+// (Task 6) is window-independent.
 
-import { DISCOVERIES_BY_CATEGORY, DISCOVERIES_COMMON } from '../data/vocab';
+import {
+  ARCS, ATE_TEMPLATES, DISCOVERIES_BY_CATEGORY, DISCOVERIES_COMMON, FRIEND_TEMPLATES,
+  ITEMS, ITEM_RARITY_WEIGHT, KIND_WEIGHTS, NAP_TEMPLATES, WEATHER_TEMPLATES,
+} from '../data/vocab';
+import type { Arc } from '../data/vocab';
 import { dayOrdinal, makeRng, mixSeed, stableHash } from './seed';
-import type { Attributes, DexCard, DiscoveryEntry } from './types';
+import { weatherForDay } from './weather';
+import type { Attributes, DexCard, DiscoveryEntry, DiscoveryKind, Item } from './types';
 
-const ADVENTURE_PROBABILITY = 0.55; // chance a monster has a discovery on a given day
-const MAX_DAYS = 60; // never simulate more than this many days of backlog
+const ADVENTURE_PROBABILITY = 0.55;
+const MAX_DAYS = 60;
 
 function dateLabel(epochMs: number): string {
   const d = new Date(epochMs);
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-function fill(tpl: string, card: DexCard, color: string): string {
-  return tpl
-    .replace(/%FOOD%/g, card.stats.favorite)
-    .replace(/%CRY%/g, card.stats.cry)
-    .replace(/%COLOR%/g, color);
+// 各概念ごとに独立した RNG（day を salt 違いで混ぜる）。
+function rngFor(baseSeed: number, salt: string, day: number) {
+  return makeRng(stableHash(`${salt}:${baseSeed}:${day}`));
+}
+
+function adventureHappened(baseSeed: number, day: number): boolean {
+  return rngFor(baseSeed, 'adv', day).chance(ADVENTURE_PROBABILITY);
+}
+
+// ── mini-story arcs (window-independent, pure function of (baseSeed, day)) ──
+const ARC_START_PROBABILITY = 0.12; // among adventure days
+const ARC_LOOKBACK = ARCS.reduce((m, a) => Math.max(m, a.days.length), 0); // >= longest arc
+
+function arcAt(baseSeed: number, startDay: number): Arc {
+  return ARCS[rngFor(baseSeed, 'arcpick', startDay).int(ARCS.length)];
+}
+
+// raw start: an adventure day that also rolls an arc start (no overlap check).
+function isRawArcStart(baseSeed: number, day: number): boolean {
+  if (!adventureHappened(baseSeed, day)) return false;
+  return rngFor(baseSeed, 'arcstart', day).chance(ARC_START_PROBABILITY);
+}
+
+// effective start: a raw start not already covered by an earlier raw start within lookback.
+function isEffectiveArcStart(baseSeed: number, day: number): boolean {
+  if (!isRawArcStart(baseSeed, day)) return false;
+  for (let k = 1; k <= ARC_LOOKBACK - 1; k++) {
+    const s = day - k;
+    if (isRawArcStart(baseSeed, s) && day - s < arcAt(baseSeed, s).days.length) return false;
+  }
+  return true;
+}
+
+// If `day` is inside an effective arc, return its arc + offset; else null.
+function arcCover(baseSeed: number, day: number): { arc: Arc; offset: number } | null {
+  for (let s = day - (ARC_LOOKBACK - 1); s <= day; s++) {
+    if (isEffectiveArcStart(baseSeed, s)) {
+      const arc = arcAt(baseSeed, s);
+      const offset = day - s;
+      if (offset >= 0 && offset < arc.days.length) return { arc, offset };
+    }
+  }
+  return null;
+}
+
+// test hook (does not affect production behavior)
+export function __arcCoverForTest(baseSeed: number, day: number) {
+  return arcCover(baseSeed, day);
+}
+
+// 重み付き抽選。entries: [key, weight][]。
+function weightedPick<T extends string>(rng: ReturnType<typeof makeRng>, entries: [T, number][]): T {
+  const total = entries.reduce((s, [, w]) => s + w, 0);
+  let r = rng.next() * total;
+  for (const [k, w] of entries) {
+    r -= w;
+    if (r < 0) return k;
+  }
+  return entries[entries.length - 1][0];
+}
+
+function pickItem(rng: ReturnType<typeof makeRng>): Item {
+  const weighted = ITEMS.map((it) => [it.id, ITEM_RARITY_WEIGHT[it.rarity]] as [string, number]);
+  const id = weightedPick(rng, weighted);
+  return ITEMS.find((it) => it.id === id) ?? ITEMS[0];
+}
+
+function weatherBucket(day: number): 'snow' | 'rain' | 'rainbow' | 'festival' | 'fair' {
+  const w = weatherForDay(day * 86_400_000);
+  if (w === 'snow' || w === 'rain' || w === 'rainbow' || w === 'festival') return w;
+  return 'fair';
+}
+
+function pickKind(baseSeed: number, day: number, hasSibling: boolean): DiscoveryKind {
+  const entries = (Object.entries(KIND_WEIGHTS) as [DiscoveryKind, number][])
+    .filter(([k]) => hasSibling || k !== 'なかよし');
+  return weightedPick(rngFor(baseSeed, 'kind', day), entries);
+}
+
+function renderEntry(
+  baseSeed: number, day: number, kind: DiscoveryKind,
+  card: DexCard, attributes: Attributes, siblingNames: string[],
+): { text: string; itemId?: string } {
+  const rng = rngFor(baseSeed, 'text', day);
+  const color = attributes.colors[0] ?? 'にじいろ';
+  switch (kind) {
+    case 'たべた':
+      return { text: rng.pick(ATE_TEMPLATES).replace(/%FOOD%/g, card.stats.favorite) };
+    case 'ひるね':
+      return { text: rng.pick(NAP_TEMPLATES) };
+    case 'てんき':
+      return { text: rng.pick(WEATHER_TEMPLATES[weatherBucket(day)]) };
+    case 'なかよし': {
+      const friend = rng.pick(siblingNames);
+      return { text: rng.pick(FRIEND_TEMPLATES).replace(/%FRIEND%/g, friend) };
+    }
+    case 'おみやげ': {
+      const item = pickItem(rng);
+      return { text: `${item.name}を ひろって かえってきた`, itemId: item.id };
+    }
+    case 'ぼうけん':
+    default: {
+      const pool = [...DISCOVERIES_COMMON, ...(DISCOVERIES_BY_CATEGORY[attributes.category] ?? [])];
+      return { text: rng.pick(pool).replace(/%COLOR%/g, color).replace(/%CRY%/g, card.stats.cry).replace(/%FOOD%/g, card.stats.favorite) };
+    }
+  }
 }
 
 export interface WhileAwayResult {
-  newEntries: DiscoveryEntry[]; // to append to monster.log
-  summary: DiscoveryEntry | null; // most recent, for the welcome/return card
+  newEntries: DiscoveryEntry[];
+  summary: DiscoveryEntry | null;
 }
 
 export function whileAwayEvents(params: {
@@ -34,30 +140,32 @@ export function whileAwayEvents(params: {
   card: DexCard;
   lastOpenMs: number;
   nowMs: number;
+  siblingNames: string[];
 }): WhileAwayResult {
-  const { monsterId, seed, attributes, card, lastOpenMs, nowMs } = params;
+  const { monsterId, seed, attributes, card, lastOpenMs, nowMs, siblingNames } = params;
   const baseSeed = stableHash('away:' + monsterId + ':' + seed);
+  const hasSibling = siblingNames.length > 0;
 
   const startDay = dayOrdinal(lastOpenMs);
   const endDay = dayOrdinal(nowMs);
   const firstDay = Math.max(startDay + 1, endDay - MAX_DAYS + 1);
 
-  const pool = [...DISCOVERIES_COMMON, ...(DISCOVERIES_BY_CATEGORY[attributes.category] ?? [])];
-  const color = attributes.colors[0] ?? 'にじいろ';
-
   const newEntries: DiscoveryEntry[] = [];
   for (let day = firstDay; day <= endDay; day++) {
-    const rng = makeRng(mixSeed(baseSeed, day));
-    if (!rng.chance(ADVENTURE_PROBABILITY)) continue;
-    const tpl = rng.pick(pool);
-    const dayMs = day * 86_400_000;
-    newEntries.push({ dayOrdinal: day, dateLabel: dateLabel(dayMs), text: fill(tpl, card, color) });
+    const cover = arcCover(baseSeed, day);
+    if (cover) {
+      // arc days are sequential adventure-flavored entries (no double emit on the start day)
+      const text = cover.arc.days[cover.offset];
+      newEntries.push({ dayOrdinal: day, dateLabel: dateLabel(day * 86_400_000), text, kind: 'ぼうけん' });
+      continue;
+    }
+    if (!adventureHappened(baseSeed, day)) continue;
+    const kind = pickKind(baseSeed, day, hasSibling);
+    const { text, itemId } = renderEntry(baseSeed, day, kind, card, attributes, siblingNames);
+    newEntries.push({ dayOrdinal: day, dateLabel: dateLabel(day * 86_400_000), text, kind, itemId });
   }
 
-  return {
-    newEntries,
-    summary: newEntries.length ? newEntries[newEntries.length - 1] : null,
-  };
+  return { newEntries, summary: newEntries.length ? newEntries[newEntries.length - 1] : null };
 }
 
 // Seed the very first log entry at intake ("はじめて みつかった").

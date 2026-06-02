@@ -6,6 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Monster } from '../../engine/types';
 import { monsterStore } from '../../engine/monster-store';
+import { deriveBond } from '../../engine/bond';
+import { deriveItems, itemCount } from '../../engine/items';
 import { C, RADIUS, SHADOW } from '../../theme/tokens';
 
 export default function CardDetail() {
@@ -32,6 +34,9 @@ export default function CardDetail() {
 
   const cutUri = m.renderMode === 'paper' ? m.originalUri : m.cutUri ?? m.originalUri;
   const num = String(m.card.number).padStart(3, '0');
+  const bond = deriveBond(m, Date.now());
+  const owned = deriveItems(m);
+  const itemsTotal = itemCount(m);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -67,6 +72,20 @@ export default function CardDetail() {
           <View style={styles.nameRow}>
             <Text style={styles.name}>{m.card.name}</Text>
             <Text style={styles.date}>{m.card.discoveredDateLabel}</Text>
+          </View>
+
+          <View style={styles.bondRow}>
+            <View style={styles.bondChip}>
+              <Text style={styles.bondChipLabel}>なかよし</Text>
+              <Text style={styles.bondChipValue}>{bond.title}</Text>
+            </View>
+            <View style={styles.bondChip}>
+              <Text style={styles.bondChipLabel}>おみやげ</Text>
+              <Text style={styles.bondChipValue}>
+                {itemsTotal}こ
+                {owned.length > 0 ? `（${owned.map((o) => o.item.name).slice(0, 3).join('・')}${owned.length > 3 ? ' ほか' : ''}）` : ''}
+              </Text>
+            </View>
           </View>
 
           <View style={styles.vMon}>
@@ -141,6 +160,10 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingHorizontal: 16, paddingTop: 6 },
   name: { fontSize: 21, fontWeight: '800', color: C.ink },
   date: { fontSize: 11, color: C.muted, fontWeight: '700', marginLeft: 'auto' },
+  bondRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 10 },
+  bondChip: { flex: 1, backgroundColor: '#fff3df', borderWidth: 1, borderColor: '#f3e6cf', borderRadius: 12, paddingVertical: 8, paddingHorizontal: 10 },
+  bondChipLabel: { fontSize: 10, fontWeight: '800', color: C.leaf, marginBottom: 2 },
+  bondChipValue: { fontSize: 12.5, fontWeight: '800', color: '#5a5040', lineHeight: 17 },
   vMon: { margin: 16, marginBottom: 0, borderRadius: 16, padding: 14, backgroundColor: '#3a3566' },
   vMonHead: { fontSize: 11, fontWeight: '800', color: C.gold, letterSpacing: 0.6, marginBottom: 7 },
   vMonText: { fontSize: 13, lineHeight: 21, color: '#f3eeff' },

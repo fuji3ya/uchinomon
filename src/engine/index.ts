@@ -6,6 +6,8 @@ export { stableHash, makeRng } from './seed';
 export { deriveAttributes, buildDexCard, mapHexToColorWords } from './dex';
 export { weatherForDay, timeOfDay, WEATHER_ASSET, WEATHER_LABEL } from './weather';
 export { whileAwayEvents, firstDiscovery } from './whileAway';
+export { deriveItems, itemCount } from './items';
+export { deriveBond, welcomeLineFor } from './bond';
 
 import { buildDexCard, deriveAttributes } from './dex';
 import { stableHash } from './seed';

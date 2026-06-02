@@ -4,7 +4,7 @@
 // here for voice + safety — nothing is generated at runtime and no child data is
 // ever sent anywhere. Determinism + curation = no hallucination reaches kids.
 
-import type { Category } from '../engine/types';
+import type { Category, DiscoveryKind, Item } from '../engine/types';
 
 // Name candidates by category (internal flavour only; category is never printed
 // as a literal claim). The kid can override at onboarding / naming.
@@ -118,3 +118,94 @@ export const KIDS_VOICE_TEMPLATES = [
   '%COLOR% いきものだよ。%PERSONA%で、%HABIT%が とくい。きょうも げんきだよ。',
   '%COLOR% かわいい いきもの。%FOOD%と %HABIT%が だいすきなんだって。',
 ] as const;
+
+// ─── while-away world depth (Phase 1) ───────────────────────────────────────
+
+// もちかえり品。アイコンは Phase 3 で実画像、ここは id/名/レア度のみ（絵文字は使わない）。
+export const ITEMS: Item[] = [
+  { id: 'kinomi', name: 'きのみ', rarity: 'common' },
+  { id: 'ishi', name: 'きれいないし', rarity: 'common' },
+  { id: 'hana', name: 'おはな', rarity: 'common' },
+  { id: 'matsubokkuri', name: 'まつぼっくり', rarity: 'common' },
+  { id: 'happa', name: 'はっぱのかんむり', rarity: 'rare' },
+  { id: 'kai', name: 'にじいろのかい', rarity: 'rare' },
+  { id: 'kakera', name: 'きらきらのかけら', rarity: 'legend' },
+];
+
+// item 抽選の rarity 別重み（合計は任意、weightedPick が正規化）。
+export const ITEM_RARITY_WEIGHT: Record<Item['rarity'], number> = {
+  common: 70,
+  rare: 25,
+  legend: 5,
+};
+
+// 日々のイベント kind の重み。'なかよし' は sibling が居ないとき除外される。
+export const KIND_WEIGHTS: Record<DiscoveryKind, number> = {
+  ぼうけん: 34,
+  たべた: 18,
+  てんき: 16,
+  おみやげ: 14,
+  なかよし: 12,
+  ひるね: 6,
+};
+
+export const ATE_TEMPLATES = [
+  '%FOOD%を おなかいっぱい たべた',
+  '%FOOD%を みつけて にっこり していた',
+  'だいすきな %FOOD%を ほおばっていた',
+];
+
+export const NAP_TEMPLATES = [
+  'ぽかぽかの ひなたで ひるねを していた',
+  'まるくなって すやすや ねむっていた',
+  'おおきな あくびを して ごろごろ していた',
+];
+
+// 天気連動。晴れ系(morning/noon/dusk/night)は fair にフォールバック。
+export const WEATHER_TEMPLATES: Record<'snow' | 'rain' | 'rainbow' | 'festival' | 'fair', string[]> = {
+  snow: ['ゆきだるまを つくって あそんだ', 'ゆきの うえに あしあとを つけた'],
+  rain: ['みずたまりで ぴちゃぴちゃ あそんだ', 'あまやどりして あめの おとを きいていた'],
+  rainbow: ['そらの にじを みあげていた', 'にじの したを くぐって みた'],
+  festival: ['おまつりで わたあめを たべた', 'おまつりの おはやしに あわせて おどった'],
+  fair: ['きもちいい かぜを あびて おさんぽ した', 'おひさまの したで のんびり していた'],
+};
+
+// なかよしイベント。%FRIEND% に他モンスター名が入る。
+export const FRIEND_TEMPLATES = [
+  '%FRIEND%と いっしょに あそんだ',
+  '%FRIEND%と かけっこ していた',
+  '%FRIEND%と なかよく おひるねした',
+];
+
+export interface Arc {
+  id: string;
+  days: string[]; // 順番に出る連続イベント文
+}
+
+export const ARCS: Arc[] = [
+  { id: 'yama', days: ['やまへ むかった', 'ちょうじょうを めざして のぼった', 'ちょうじょうに ついて おおよろこび！'] },
+  { id: 'umi', days: ['うみべへ おさんぽ に でかけた', 'なみと おいかけっこ していた', 'すなはまで たからものを みつけた！'] },
+  { id: 'tomodachi', days: ['あたらしい ともだちを さがしに いった', 'とおくの もりまで あるいた', 'あたらしい ともだちが できた！'] },
+];
+
+export interface BondTier {
+  minPoints: number;
+  level: number;
+  title: string;
+}
+
+// 閾値は昇順。points >= minPoints の最大 tier を採用。
+export const BOND_TIERS: BondTier[] = [
+  { minPoints: 0, level: 0, title: 'であったばかり' },
+  { minPoints: 6, level: 1, title: 'なかよし' },
+  { minPoints: 16, level: 2, title: 'だいすき' },
+  { minPoints: 32, level: 3, title: 'しんゆう' },
+];
+
+// bond level 別の「おかえり」枕詞。%NAME% と %SUMMARY% を後で埋める。
+export const WELCOME_BY_LEVEL: Record<number, string> = {
+  0: '%NAME%が かえってきたよ。%SUMMARY%',
+  1: '%NAME%が ただいま！ %SUMMARY%',
+  2: 'おかえり、%NAME%！ %SUMMARY%',
+  3: '%NAME%が うれしそうに かけよってきた。%SUMMARY%',
+};

@@ -42,10 +42,40 @@ export interface Attributes {
   aspect: number; // bounding-box width/height ratio
 }
 
+export type DiscoveryKind =
+  | 'たべた'
+  | 'ひるね'
+  | 'ぼうけん'
+  | 'おみやげ'
+  | 'てんき'
+  | 'なかよし';
+
+export type Rarity = 'common' | 'rare' | 'legend';
+
+export interface Item {
+  id: string;
+  name: string; // ひらがな中心の表示名
+  rarity: Rarity;
+}
+
+export interface OwnedItem {
+  item: Item;
+  count: number;
+  firstDayOrdinal: number;
+}
+
+export interface Bond {
+  points: number;
+  level: number; // 0..3
+  title: string; // であったばかり / なかよし / だいすき / しんゆう
+}
+
 export interface DiscoveryEntry {
   dayOrdinal: number; // calendar day the event happened
   dateLabel: string; // "5/27"
   text: string; // "よるの たんけんで きらきらの石を ひろった"
+  kind?: DiscoveryKind; // undefined for legacy/first-discovery entries
+  itemId?: string; // set only when kind === 'おみやげ'
 }
 
 export interface DexCard {

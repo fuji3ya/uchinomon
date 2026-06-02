@@ -3,6 +3,7 @@
 // 30-day view-lock) is unit-testable on node; the RN app supplies an
 // AsyncStorage-backed adapter (store.native.ts).
 
+import { deriveBond } from './bond';
 import { dayOrdinal } from './seed';
 import { whileAwayEvents } from './whileAway';
 import type { Monster } from './types';
@@ -18,7 +19,7 @@ const K_INTAKE = 'uchinomon.intake.v1'; // {"day":<ordinal>,"count":<n>}
 const K_PRO = 'uchinomon.pro.v1';
 const K_WELCOME = 'uchinomon.welcome.v1'; // [{name,text}] pending "おかえり" cards
 
-export type Welcome = { name: string; text: string };
+export type Welcome = { name: string; text: string; level: number };
 
 const DAY = 86_400_000;
 const FREE_DAILY_INTAKE = 1;
@@ -97,16 +98,17 @@ export class MonsterStore {
     const out: { monster: Monster; summaryText: string | null }[] = [];
     const welcomes: Welcome[] = [];
     for (const m of list) {
+      const siblingNames = list.filter((o) => o.id !== m.id).map((o) => o.card.name);
       const res = whileAwayEvents({
         monsterId: m.id, seed: m.seed, attributes: m.attributes, card: m.card,
-        lastOpenMs: Math.max(lastOpen, m.createdAtMs), nowMs, // never before it existed
+        lastOpenMs: Math.max(lastOpen, m.createdAtMs), nowMs, siblingNames, // never before it existed
       });
       const seen = new Set(m.log.map((e) => e.dayOrdinal + '|' + e.text));
       for (const e of res.newEntries) {
         if (!seen.has(e.dayOrdinal + '|' + e.text)) m.log.push(e);
       }
       out.push({ monster: m, summaryText: res.summary?.text ?? null });
-      if (res.summary) welcomes.push({ name: m.card.name, text: res.summary.text });
+      if (res.summary) welcomes.push({ name: m.card.name, text: res.summary.text, level: deriveBond(m, nowMs).level });
     }
 
     await this.save(list);

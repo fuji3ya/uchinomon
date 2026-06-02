@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomBar, BOTTOM_BAR_HEIGHT } from '../components/bottom-bar';
 import { WEATHER_LABEL, weatherForDay } from '../engine';
+import { welcomeLineFor } from '../engine/bond';
 import { monsterStore } from '../engine/monster-store';
 import type { Monster } from '../engine/types';
 import { BG_SOURCE } from '../theme/backgrounds';
@@ -20,7 +21,7 @@ export default function LivingZoo() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [monsters, setMonsters] = useState<Monster[] | null>(null);
-  const [welcome, setWelcome] = useState<{ name: string; text: string }[]>([]);
+  const [welcome, setWelcome] = useState<{ name: string; text: string; level: number }[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
   const weather = weatherForDay(Date.now());
@@ -63,8 +64,8 @@ export default function LivingZoo() {
               <Text style={styles.welcomeCloseText}>✕</Text>
             </Pressable>
             <Text style={styles.welcomeTitle}>
-              {welcome[0].name}
-              {welcome.length > 1 ? ` ほか ${welcome.length - 1}ぴき` : ''}が ぼうけんから かえってきたよ
+              {welcomeLineFor(welcome[0].level, welcome[0].name, '')}
+              {welcome.length > 1 ? ` ほか ${welcome.length - 1}ぴき` : ''}
             </Text>
             {welcome.slice(0, 3).map((w, i) => (
               <View key={i} style={styles.giftRow}>

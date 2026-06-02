@@ -69,6 +69,25 @@ const mk = (h: string, created: number, n: number) =>
   const r3 = await s.syncWorld(t0 + 8 * DAY);
   check('next-day sync returns monsters', r3.length === 1);
 
+  console.log('\n— syncWorld injects sibling names so なかよし can fire —');
+  s = new MonsterStore(memKV());
+  await s.addMonster(mk('sa', t0, 1), t0);
+  await s.addMonster(mk('sb', t0, 2), t0);
+  const synced = await s.syncWorld(t0 + 40 * DAY);
+  const allEntries = (await s.all()).flatMap((m) => m.log);
+  const friend = allEntries.filter((e) => (e as any).kind === 'なかよし');
+  const names = (await s.all()).map((m) => m.card.name);
+  check('なかよし entries reference an existing monster name',
+    friend.length === 0 || friend.every((e) => names.some((n) => e.text.includes(n))));
+  check('syncWorld still returns one result per monster', synced.length === 2);
+
+  console.log('\n— welcome carries bond level —');
+  s = new MonsterStore(memKV());
+  await s.addMonster(mk('wl', t0, 1), t0);
+  await s.syncWorld(t0 + 50 * DAY); // long enough to raise bond level
+  const wlist = await s.getWelcome();
+  check('welcome has a numeric level', wlist.length === 0 || typeof (wlist[0] as any).level === 'number');
+
   console.log('\n' + (failures === 0 ? '✅ ALL STORE CHECKS PASSED' : `❌ ${failures} CHECK(S) FAILED`));
   process.exit(failures === 0 ? 0 : 1);
 })();
