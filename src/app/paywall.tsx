@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { monsterStore } from '../engine/store.native';
+import { monsterStore } from '../engine/monster-store';
 import { C, RADIUS, SHADOW } from '../theme/tokens';
 
 // NOTE: real purchases are wired in task #13 (RevenueCat). For now the buttons

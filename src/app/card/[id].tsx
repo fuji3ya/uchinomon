@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Monster } from '../../engine/types';
-import { monsterStore } from '../../engine/store.native';
+import { monsterStore } from '../../engine/monster-store';
 import { C, RADIUS, SHADOW } from '../../theme/tokens';
 
 export default function CardDetail() {

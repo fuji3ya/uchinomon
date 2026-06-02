@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { buildMonster, deriveAttributes, stableHash } from '../engine';
 import type { RenderMode } from '../engine/types';
-import { monsterStore } from '../engine/store.native';
+import { monsterStore } from '../engine/monster-store';
 import { C, RADIUS, SHADOW } from '../theme/tokens';
 
 export default function Naming() {
