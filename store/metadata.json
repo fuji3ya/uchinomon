@@ -1,0 +1,27 @@
+{
+  "primary_locale": "ja",
+  "name": "うちのモン",
+  "subtitle": "おえかきが どうぶつえんに",
+  "category": "Kids",
+  "age_rating": "4+",
+  "keywords": "おえかき,お絵描き,こども,知育,図鑑,ずかん,どうぶつ,モンスター,3歳,4歳,5歳,えほん",
+  "promotional_text": "かいた おえかきが、たんまつの なかで うごきだす。あなただけの どうぶつえんを そだてよう。",
+  "description": "うちのモンは、お子さまが かいた おえかきを、その たんまつの なかだけで「うごく モンスター」に へんしんさせる おえかき図鑑アプリです。\n\n■ あそびかた\n1. おえかきを さつえい、または しゃしんから えらぶ\n2. たんまつの中の しくみが、えの かたちを きりぬいて モンスターに\n3. なまえを つけて、あなたの どうぶつえんに なかま入り\n4. 留守のあいだも、モンスターたちは ぼうけんしたり、おみやげを みつけたり。つぎに ひらくと「おかえり」の はっけんが ふえています\n\n■ あんしんの設計\n・お子さまの え・なまえ・データは サーバーに 送られず、すべて たんまつの中だけで しょりされます。たんまつ内の データは iOS の あんごうか（encryption / Data Protection）で ほごされ、いつでも アプリを けせば 消えます\n・広告は ありません\n・かいいん とうろくや こうにゅうは、Face ID などの ほごしゃ かくにんの おくにあります\n\n■ Pro（かいきり）\n1かいの おしはらいで、おえかきの 無制限 とりこみ・ずかんカードの ずっと ほぞん・はっけんログの ずっと きろく が つかえます。月額では ありません。\n\n3〜6歳の お子さまと、おうちの かたが いっしょに たのしめます。",
+  "description_4000char": "うちのモンは、お子さまが かいた おえかきを、その たんまつの なかだけで「うごく モンスター」に へんしんさせる おえかき図鑑アプリです。お子さまの え・なまえ・データは サーバーに 送られず、すべて たんまつの中だけで しょりされます。たんまつ内の データは iOS の Data Protection で 暗号化（encrypted at rest）され、いつでも アプリを けせば 消えます。広告は ありません。かいいん とうろくや こうにゅうは Face ID などの ほごしゃ かくにんの おくにあります。Pro は 1かいの おしはらいで ずっと つかえる かいきり（月額では ありません）。",
+  "privacy_policy_url": "https://uchinomon.pages.dev/privacy",
+  "support_url": "https://uchinomon.pages.dev/support",
+  "subscriptions": [],
+  "in_app_purchases": [
+    {
+      "product_id": "app.starvingeffort.uchinomon.pro",
+      "type": "non_consumable",
+      "reference_name": "うちのモン Pro (かいきり)",
+      "display_name": "うちのモン Pro",
+      "description": "おえかきの 無制限とりこみ・ずかんカードの ずっとほぞん・はっけんログの ずっときろく。1かいの おしはらいで ずっと つかえます。",
+      "price_tier_jpy": 1000,
+      "available_in_all_territories": true,
+      "entitlement": "pro"
+    }
+  ],
+  "_notes": "ASC submission source of truth. privacy/support pages must be deployed to uchinomon.pages.dev before submit. IAP must be created in ASC (non-consumable), priced, localized, given an App Review screenshot, and ATTACHED TO THE VERSION submission (Mirrorbite 2.1(b) lesson)."
+}
