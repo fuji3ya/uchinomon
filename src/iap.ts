@@ -30,7 +30,8 @@ export async function getProPackage(): Promise<PurchasesPackage | null> {
   if (!configured) return null;
   try {
     const offerings = await Purchases.getOfferings();
-    return offerings.current?.availablePackages[0] ?? null;
+    const off = offerings.all?.['default'] ?? offerings.current;
+    return off?.availablePackages[0] ?? null;
   } catch {
     return null;
   }
