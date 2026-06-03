@@ -118,6 +118,17 @@ const check = (n: string, c: boolean, extra?: unknown) => {
   check('arc completion promoted to summary when present',
     !completedInWindow || (long.summary !== null && arcFinals.has(long.summary.text)));
 
+  console.log('\n— behaviorFor: deterministic mood by weather/time —');
+  const { behaviorFor } = await import('./behavior');
+  const nowB = 1000 * DAY2;
+  check('behaviorFor deterministic', behaviorFor(7, 'noon', 'ひる', nowB) === behaviorFor(7, 'noon', 'ひる', nowB));
+  check('rain → sheltering (majority of 100 seeds)',
+    Array.from({ length: 100 }, (_, i) => behaviorFor(i, 'rain', 'ひる', nowB)).filter((b) => b === 'sheltering').length > 60);
+  check('night → sleeping (majority of 100 seeds)',
+    Array.from({ length: 100 }, (_, i) => behaviorFor(i, 'night', 'よる', nowB)).filter((b) => b === 'sleeping').length > 55);
+  check('festival → always playing', Array.from({ length: 50 }, (_, i) => behaviorFor(i, 'festival', 'ひる', nowB)).every((b) => b === 'playing'));
+  check('only known behaviors', Array.from({ length: 100 }, (_, i) => behaviorFor(i, 'noon', 'ひる', nowB)).every((b) => ['sleeping', 'sheltering', 'playing', 'roaming'].includes(b)));
+
   console.log('\n' + (failures === 0 ? '✅ ALL WORLD CHECKS PASSED' : `❌ ${failures} CHECK(S) FAILED`));
   process.exit(failures === 0 ? 0 : 1);
 })();

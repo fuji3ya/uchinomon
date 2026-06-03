@@ -5,7 +5,8 @@ import { Animated, Easing, ImageBackground, Pressable, ScrollView, StyleSheet, T
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomBar, BOTTOM_BAR_HEIGHT } from '../components/bottom-bar';
-import { WEATHER_LABEL, weatherForDay } from '../engine';
+import { WEATHER_LABEL, weatherForDay, timeOfDay } from '../engine';
+import { behaviorFor, type Behavior } from '../engine/behavior';
 import { welcomeLineFor } from '../engine/bond';
 import { monsterStore } from '../engine/monster-store';
 import type { Monster } from '../engine/types';
@@ -25,6 +26,7 @@ export default function LivingZoo() {
   const [err, setErr] = useState<string | null>(null);
 
   const weather = weatherForDay(Date.now());
+  const tod = timeOfDay(Date.now());
 
   const load = useCallback(async () => {
     try {
@@ -82,7 +84,7 @@ export default function LivingZoo() {
           ) : (
             <View style={styles.meadow}>
               {monsters.map((m, i) => (
-                <MonsterSprite key={m.id} monster={m} index={i} onPress={() => router.push(`/card/${encodeURIComponent(m.id)}`)} />
+                <MonsterSprite key={m.id} monster={m} index={i} behavior={behaviorFor(m.seed, weather, tod, Date.now())} />
               ))}
             </View>
           )}
@@ -93,22 +95,59 @@ export default function LivingZoo() {
   );
 }
 
-function MonsterSprite({ monster, index, onPress }: { monster: Monster; index: number; onPress: () => void }) {
+// Per-behavior idle motion. sleeping = tiny slow breath, sheltering = small huddle
+// bob, playing = big lively bounce, roaming = normal bob + gentle horizontal drift.
+const MOTION: Record<Behavior, { amp: number; dur: number; drift: number }> = {
+  sleeping: { amp: 3, dur: 1900, drift: 0 },
+  sheltering: { amp: 5, dur: 1400, drift: 0 },
+  playing: { amp: 15, dur: 560, drift: 0 },
+  roaming: { amp: 10, dur: 900, drift: 10 },
+};
+
+function MonsterSprite({ monster, index, behavior }: { monster: Monster; index: number; behavior: Behavior }) {
   const y = useRef(new Animated.Value(0)).current;
+  const x = useRef(new Animated.Value(0)).current;
+  const pop = useRef(new Animated.Value(1)).current;
+  const [reacting, setReacting] = useState(false);
+
   useEffect(() => {
-    const dur = 900 + (index % 3) * 180;
+    const m = MOTION[behavior];
+    const dur = m.dur + (index % 3) * 120;
     const loop = Animated.loop(Animated.sequence([
-      Animated.timing(y, { toValue: -10, duration: dur, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      Animated.timing(y, { toValue: -m.amp, duration: dur, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
       Animated.timing(y, { toValue: 0, duration: dur, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
     ]));
     loop.start();
-    return () => loop.stop();
-  }, [y, index]);
+    let drift: Animated.CompositeAnimation | null = null;
+    if (m.drift > 0) {
+      drift = Animated.loop(Animated.sequence([
+        Animated.timing(x, { toValue: m.drift, duration: 2200 + (index % 4) * 300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(x, { toValue: -m.drift, duration: 2200 + (index % 4) * 300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]));
+      drift.start();
+    }
+    return () => { loop.stop(); drift?.stop(); };
+  }, [y, x, index, behavior]);
+
+  function react() {
+    setReacting(true);
+    Animated.sequence([
+      Animated.spring(pop, { toValue: 1.18, useNativeDriver: true, speed: 30, bounciness: 14 }),
+      Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 18, bounciness: 12 }),
+    ]).start();
+    setTimeout(() => setReacting(false), 1300);
+  }
 
   const uri = monster.renderMode === 'paper' ? monster.originalUri : monster.cutUri ?? monster.originalUri;
   return (
-    <Pressable onPress={onPress} style={[styles.spriteWrap, { marginTop: (index % 2) * 28 }]}>
-      <Animated.View style={{ transform: [{ translateY: y }] }}>
+    <Pressable onPress={react} style={[styles.spriteWrap, { marginTop: (index % 2) * 28 }]}>
+      {behavior === 'sleeping' && !reacting && (
+        <View style={styles.bubble}><Text style={styles.bubbleText}>zzz</Text></View>
+      )}
+      {reacting && (
+        <View style={styles.bubble}><Text style={styles.bubbleText}>{monster.card.stats.cry}</Text></View>
+      )}
+      <Animated.View style={{ transform: [{ translateX: x }, { translateY: y }, { scale: pop }] }}>
         <Image source={{ uri }} style={styles.sprite} contentFit="contain" />
       </Animated.View>
       <View style={styles.nameTag}><Text style={styles.nameTagText}>{monster.card.name}</Text></View>
@@ -142,6 +181,8 @@ const styles = StyleSheet.create({
   scene: { flexGrow: 1, justifyContent: 'flex-end' },
   meadow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'flex-end', gap: 6, paddingHorizontal: 10 },
   spriteWrap: { alignItems: 'center', width: '32%' },
+  bubble: { position: 'absolute', top: -6, zIndex: 3, backgroundColor: 'rgba(255,255,255,.95)', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 3, ...SHADOW.soft },
+  bubbleText: { fontSize: 12, fontWeight: '800', color: C.accentDeep },
   sprite: { width: 96, height: 96 },
   nameTag: { backgroundColor: 'rgba(43,37,64,.72)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, marginTop: 2 },
   nameTagText: { color: '#fff', fontSize: 10.5, fontWeight: '800' },
