@@ -12,10 +12,13 @@ import { deriveItems, itemCount } from '../../engine/items';
 import { cardRarity } from '../../engine/rarity';
 import { C, RADIUS, SHADOW } from '../../theme/tokens';
 
+// No "rarity tier" jargon (avoid Pokémon-isms). Common shows NO badge — every
+// child's drawing is special, none is labelled "ordinary". Only the rarer ones
+// get a soft, descriptive sparkle word.
 const RARITY_STYLE: Record<Rarity, { label: string; grad: [string, string]; accent: string; foil: boolean }> = {
-  common: { label: 'ノーマル', grad: ['#ffe9f0', '#fff3df'], accent: '#7a6a98', foil: false },
-  rare: { label: 'レア', grad: ['#e7ecff', '#f3e9ff'], accent: '#5b6ee0', foil: false },
-  legend: { label: 'レジェンド', grad: ['#fff4cf', '#ffe08a'], accent: '#a9790a', foil: true },
+  common: { label: '', grad: ['#ffe9f0', '#fff3df'], accent: '#7a6a98', foil: false },
+  rare: { label: 'きらきら', grad: ['#e7ecff', '#f3e9ff'], accent: '#5b6ee0', foil: false },
+  legend: { label: 'にじいろ', grad: ['#fff4cf', '#ffe08a'], accent: '#a9790a', foil: true },
 };
 
 export default function CardDetail() {
@@ -68,7 +71,9 @@ export default function CardDetail() {
           <LinearGradient colors={rstyle.grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cardHead}>
             <Text style={[styles.cardNum, { color: rstyle.accent }]}>No.{num}</Text>
             <View style={styles.attrRow}>
-              <View style={[styles.rarityBadge, { backgroundColor: rstyle.accent }]}><Text style={styles.rarityBadgeText}>{rstyle.label}</Text></View>
+              {rstyle.label !== '' && (
+                <View style={[styles.rarityBadge, { backgroundColor: rstyle.accent }]}><Text style={styles.rarityBadgeText}>{rstyle.label}</Text></View>
+              )}
               <Text style={styles.attr}>{m.card.diet}</Text>
               <Text style={styles.attr}>{m.card.zone}</Text>
             </View>

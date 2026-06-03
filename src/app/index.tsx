@@ -113,18 +113,23 @@ function MonsterSprite({ monster, index, behavior }: { monster: Monster; index: 
   useEffect(() => {
     const m = MOTION[behavior];
     const dur = m.dur + (index % 3) * 120;
+    // resetBeforeIteration:false → the value keeps flowing across loop iterations
+    // instead of snapping back to its start each cycle (the "急に0に戻る" jump).
     const loop = Animated.loop(Animated.sequence([
-      Animated.timing(y, { toValue: -m.amp, duration: dur, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      Animated.timing(y, { toValue: 0, duration: dur, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-    ]));
+      Animated.timing(y, { toValue: -m.amp, duration: dur, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(y, { toValue: 0, duration: dur, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ]), { resetBeforeIteration: false });
     loop.start();
     let drift: Animated.CompositeAnimation | null = null;
     if (m.drift > 0) {
+      const ddur = 2200 + (index % 4) * 300;
       drift = Animated.loop(Animated.sequence([
-        Animated.timing(x, { toValue: m.drift, duration: 2200 + (index % 4) * 300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(x, { toValue: -m.drift, duration: 2200 + (index % 4) * 300, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ]));
+        Animated.timing(x, { toValue: m.drift, duration: ddur, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(x, { toValue: -m.drift, duration: ddur, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]), { resetBeforeIteration: false });
       drift.start();
+    } else {
+      x.setValue(0);
     }
     return () => { loop.stop(); drift?.stop(); };
   }, [y, x, index, behavior]);
