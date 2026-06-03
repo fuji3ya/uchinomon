@@ -129,6 +129,15 @@ const check = (n: string, c: boolean, extra?: unknown) => {
   check('festival → always playing', Array.from({ length: 50 }, (_, i) => behaviorFor(i, 'festival', 'ひる', nowB)).every((b) => b === 'playing'));
   check('only known behaviors', Array.from({ length: 100 }, (_, i) => behaviorFor(i, 'noon', 'ひる', nowB)).every((b) => ['sleeping', 'sheltering', 'playing', 'roaming'].includes(b)));
 
+  console.log('\n— cardRarity: deterministic, weighted —');
+  const { cardRarity } = await import('./rarity');
+  check('cardRarity deterministic', cardRarity(42) === cardRarity(42));
+  const rs = Array.from({ length: 300 }, (_, i) => cardRarity(i * 2654435761 % 1000000));
+  const cnt = (r: string) => rs.filter((x) => x === r).length;
+  check('only known rarities', rs.every((r) => ['common', 'rare', 'legend'].includes(r)));
+  check('common > rare > legend distribution', cnt('common') > cnt('rare') && cnt('rare') > cnt('legend'), `c=${cnt('common')} r=${cnt('rare')} l=${cnt('legend')}`);
+  check('legend exists but is uncommon', cnt('legend') > 0 && cnt('legend') < cnt('common') / 3);
+
   console.log('\n' + (failures === 0 ? '✅ ALL WORLD CHECKS PASSED' : `❌ ${failures} CHECK(S) FAILED`));
   process.exit(failures === 0 ? 0 : 1);
 })();

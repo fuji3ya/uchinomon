@@ -77,7 +77,7 @@ export default function Naming() {
       overrideName: name.trim() || candidates[0], attributes,
     });
     await monsterStore.addMonster(monster, now);
-    router.replace(`/card/${encodeURIComponent(monster.id)}`);
+    router.replace(`/reveal?id=${encodeURIComponent(monster.id)}`);
   }
 
   const previewUri = mode === 'paper' || !cut ? original : cut;

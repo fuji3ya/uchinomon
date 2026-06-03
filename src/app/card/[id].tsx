@@ -1,14 +1,22 @@
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import type { Monster } from '../../engine/types';
+import type { Monster, Rarity } from '../../engine/types';
 import { monsterStore } from '../../engine/monster-store';
 import { deriveBond } from '../../engine/bond';
 import { deriveItems, itemCount } from '../../engine/items';
+import { cardRarity } from '../../engine/rarity';
 import { C, RADIUS, SHADOW } from '../../theme/tokens';
+
+const RARITY_STYLE: Record<Rarity, { label: string; grad: [string, string]; accent: string; foil: boolean }> = {
+  common: { label: 'ノーマル', grad: ['#ffe9f0', '#fff3df'], accent: '#7a6a98', foil: false },
+  rare: { label: 'レア', grad: ['#e7ecff', '#f3e9ff'], accent: '#5b6ee0', foil: false },
+  legend: { label: 'レジェンド', grad: ['#fff4cf', '#ffe08a'], accent: '#a9790a', foil: true },
+};
 
 export default function CardDetail() {
   const router = useRouter();
@@ -37,6 +45,8 @@ export default function CardDetail() {
   const bond = deriveBond(m, Date.now());
   const owned = deriveItems(m);
   const itemsTotal = itemCount(m);
+  const rarity = cardRarity(m.seed);
+  const rstyle = RARITY_STYLE[rarity];
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -47,14 +57,22 @@ export default function CardDetail() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.card}>
-          <View style={styles.cardHead}>
-            <Text style={styles.cardNum}>No.{num}</Text>
+        <View style={[styles.card, rstyle.foil && styles.cardLegend]}>
+          {rstyle.foil && (
+            <LinearGradient
+              colors={['rgba(255,255,255,0)', 'rgba(255,243,191,0.35)', 'rgba(255,255,255,0)']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={styles.foil} pointerEvents="none"
+            />
+          )}
+          <LinearGradient colors={rstyle.grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cardHead}>
+            <Text style={[styles.cardNum, { color: rstyle.accent }]}>No.{num}</Text>
             <View style={styles.attrRow}>
+              <View style={[styles.rarityBadge, { backgroundColor: rstyle.accent }]}><Text style={styles.rarityBadgeText}>{rstyle.label}</Text></View>
               <Text style={styles.attr}>{m.card.diet}</Text>
               <Text style={styles.attr}>{m.card.zone}</Text>
             </View>
-          </View>
+          </LinearGradient>
 
           <View style={styles.visuals}>
             <View style={styles.vbox}>
@@ -78,6 +96,11 @@ export default function CardDetail() {
             <View style={styles.bondChip}>
               <Text style={styles.bondChipLabel}>なかよし</Text>
               <Text style={styles.bondChipValue}>{bond.title}</Text>
+              <View style={styles.dots}>
+                {[0, 1, 2, 3].map((i) => (
+                  <View key={i} style={[styles.dot, i <= bond.level && styles.dotOn]} />
+                ))}
+              </View>
             </View>
             <View style={styles.bondChip}>
               <Text style={styles.bondChipLabel}>おみやげ</Text>
@@ -147,9 +170,13 @@ const styles = StyleSheet.create({
   navPage: { fontSize: 12, color: C.muted, fontWeight: '700' },
   scroll: { padding: 16, paddingBottom: 28 },
   card: { backgroundColor: C.card, borderRadius: RADIUS.card, overflow: 'hidden', ...SHADOW.card },
-  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, backgroundColor: '#ffe9f0' },
+  cardLegend: { borderWidth: 2, borderColor: '#e7b84b' },
+  foil: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 },
+  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14 },
   cardNum: { fontWeight: '800', color: C.accentDeep, fontSize: 13 },
-  attrRow: { flexDirection: 'row', gap: 6 },
+  rarityBadge: { borderRadius: 9, paddingHorizontal: 9, paddingVertical: 3 },
+  rarityBadgeText: { fontSize: 10.5, fontWeight: '900', color: '#fff', overflow: 'hidden' },
+  attrRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   attr: { backgroundColor: '#fff', borderRadius: 9, paddingHorizontal: 9, paddingVertical: 3, fontSize: 10.5, fontWeight: '800', color: '#7a6a98', overflow: 'hidden' },
   visuals: { flexDirection: 'row', gap: 10, padding: 14 },
   vbox: { flex: 1, borderRadius: 16, overflow: 'hidden', position: 'relative' },
@@ -164,6 +191,9 @@ const styles = StyleSheet.create({
   bondChip: { flex: 1, backgroundColor: '#fff3df', borderWidth: 1, borderColor: '#f3e6cf', borderRadius: 12, paddingVertical: 8, paddingHorizontal: 10 },
   bondChipLabel: { fontSize: 10, fontWeight: '800', color: C.leaf, marginBottom: 2 },
   bondChipValue: { fontSize: 12.5, fontWeight: '800', color: '#5a5040', lineHeight: 17 },
+  dots: { flexDirection: 'row', gap: 4, marginTop: 5 },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#e6dcc4' },
+  dotOn: { backgroundColor: C.gold },
   vMon: { margin: 16, marginBottom: 0, borderRadius: 16, padding: 14, backgroundColor: '#3a3566' },
   vMonHead: { fontSize: 11, fontWeight: '800', color: C.gold, letterSpacing: 0.6, marginBottom: 7 },
   vMonText: { fontSize: 13, lineHeight: 21, color: '#f3eeff' },
