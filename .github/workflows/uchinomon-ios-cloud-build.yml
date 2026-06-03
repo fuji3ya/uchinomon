@@ -169,6 +169,9 @@ jobs:
       - name: Archive (signed)
         env:
           BUILD_NUMBER: ${{ github.run_number }}
+          # RevenueCat iOS public SDK key (client key — safe to expose; baked into
+          # the JS bundle at archive time so the paywall connects to the store).
+          EXPO_PUBLIC_RC_API_KEY_IOS: ${{ vars.EXPO_PUBLIC_RC_API_KEY_IOS }}
         run: |
           set -o pipefail
           # Expo prebuild bakes a literal CFBundleVersion ("1") into Info.plist,
