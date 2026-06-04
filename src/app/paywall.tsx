@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { PurchasesPackage } from 'react-native-purchases';
 
@@ -101,6 +101,11 @@ export default function Paywall() {
           お子さまの えと なまえは、うちのモンの サーバーには おくりません。すべて この端末の中で しょりされます。
         </Text>
         <Text style={styles.legal}>1かいの おしはらいで ずっと つかえます（つきがくでは ありません）。</Text>
+        <View style={styles.legalLinks}>
+          <Text style={styles.legalLink} onPress={() => Linking.openURL('https://uchinomon.pages.dev/terms').catch(() => {})}>利用規約</Text>
+          <Text style={styles.legalDot}>・</Text>
+          <Text style={styles.legalLink} onPress={() => Linking.openURL('https://uchinomon.pages.dev/privacy').catch(() => {})}>プライバシーポリシー</Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -124,4 +129,7 @@ const styles = StyleSheet.create({
   restoreText: { color: '#c9c2da', fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
   privacy: { fontSize: 12, color: '#b1aac0', lineHeight: 18, marginTop: 10 },
   legal: { fontSize: 11, color: '#8a8298', lineHeight: 16 },
+  legalLinks: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8 },
+  legalLink: { fontSize: 12, color: '#c9c2da', fontWeight: '700', textDecorationLine: 'underline' },
+  legalDot: { fontSize: 12, color: '#8a8298', marginHorizontal: 4 },
 });

@@ -1,0 +1,6 @@
+# Cloudflare Pages — うちのモン legal/marketing static site
+# Deploy: npx wrangler pages deploy . --project-name=uchinomon --branch=main
+# URLs: https://uchinomon.pages.dev/  /privacy  /terms  /support
+name = "uchinomon"
+compatibility_date = "2026-06-03"
+pages_build_output_dir = "."

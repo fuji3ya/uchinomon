@@ -1,11 +1,17 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomBar, BOTTOM_BAR_HEIGHT } from '../components/bottom-bar';
 import { monsterStore } from '../engine/monster-store';
 import { C, RADIUS, SHADOW } from '../theme/tokens';
+
+const LEGAL = {
+  privacy: 'https://uchinomon.pages.dev/privacy',
+  terms: 'https://uchinomon.pages.dev/terms',
+  support: 'https://uchinomon.pages.dev/support',
+};
 
 export default function Settings() {
   const insets = useSafeAreaInsets();
@@ -42,6 +48,10 @@ export default function Settings() {
           label="このアプリについて"
           body={'うちのモン  v1.0\n\nおえかきが いきものに なって、どうぶつえんで くらすアプリだよ。きりぬき・ずかん・るすちゅうの できごとは すべて この端末の中で つくられ、サーバーには おくられません。'}
         />
+
+        <LinkRow label="プライバシーポリシー" url={LEGAL.privacy} />
+        <LinkRow label="利用規約" url={LEGAL.terms} />
+        <LinkRow label="サポート・お問い合わせ" url={LEGAL.support} />
       </ScrollView>
       <BottomBar active="settings" />
     </View>
@@ -58,6 +68,17 @@ function InfoRow({ label, body }: { label: string; body: string }) {
       </Pressable>
       {open && <Text style={styles.rowBody}>{body}</Text>}
     </View>
+  );
+}
+
+function LinkRow({ label, url }: { label: string; url: string }) {
+  return (
+    <Pressable style={styles.rowWrap} onPress={() => Linking.openURL(url).catch(() => {})}>
+      <View style={styles.row}>
+        <Text style={styles.rowLabel}>{label}</Text>
+        <Text style={styles.rowChevron}>›</Text>
+      </View>
+    </Pressable>
   );
 }
 
