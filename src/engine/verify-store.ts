@@ -88,6 +88,16 @@ const mk = (h: string, created: number, n: number) =>
   const wlist = await s.getWelcome();
   check('welcome has a numeric level', wlist.length === 0 || typeof (wlist[0] as any).level === 'number');
 
+  console.log('\n— remove() deletes a monster from the dex —');
+  s = new MonsterStore(memKV());
+  await s.addMonster(mk('rm1', t0, 1), t0);
+  await s.addMonster(mk('rm2', t0, 2), t0);
+  check('two monsters before remove', (await s.all()).length === 2);
+  await s.remove('rm1');
+  const after = await s.all();
+  check('one monster after remove', after.length === 1 && after[0].id === 'rm2');
+  check('remove of missing id is a no-op', (await s.remove('nope'), (await s.all()).length === 1));
+
   console.log('\n' + (failures === 0 ? '✅ ALL STORE CHECKS PASSED' : `❌ ${failures} CHECK(S) FAILED`));
   process.exit(failures === 0 ? 0 : 1);
 })();

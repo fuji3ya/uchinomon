@@ -72,6 +72,14 @@ export class MonsterStore {
     await this.kv.set(K_INTAKE, JSON.stringify({ day: today, count }));
   }
 
+  // Remove a monster from the zoo/dex (user-initiated "さよなら"). Does not touch
+  // the daily intake counter (deleting doesn't refund today's slot, matching the
+  // "1日1ぴき" promise). Image files are cleaned up by the UI layer.
+  async remove(id: string): Promise<void> {
+    const list = await this.all();
+    await this.save(list.filter((m) => m.id !== id));
+  }
+
   // View-lock (NOT delete) for free users after 30 days (ENGINE_SPEC §7:
   // "expire は削除ではなく閲覧ロック"). Pro / one-time-purchased stay unlocked.
   async isLocked(m: Monster, nowMs: number, pro: boolean): Promise<boolean> {

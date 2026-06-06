@@ -2,7 +2,8 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { Monster, Rarity } from '../../engine/types';
@@ -50,6 +51,30 @@ export default function CardDetail() {
   const itemsTotal = itemCount(m);
   const rarity = cardRarity(m.seed);
   const rstyle = RARITY_STYLE[rarity];
+
+  function sayGoodbye() {
+    if (!m) return;
+    Alert.alert(
+      `${m.card.name}と さよならする？`,
+      'どうぶつえんから いなくなって、ずかんからも きえます。もとには もどせません。',
+      [
+        { text: 'やめる', style: 'cancel' },
+        {
+          text: 'さよならする',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              for (const uri of [m.originalUri, m.cutUri]) {
+                if (uri?.startsWith('file://')) await FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
+              }
+              await monsterStore.remove(m.id);
+            } catch {}
+            router.replace('/zukan');
+          },
+        },
+      ],
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -149,6 +174,10 @@ export default function CardDetail() {
             </View>
             <Text style={styles.keepChevron}>›</Text>
           </Pressable>
+
+          <Pressable style={styles.goodbye} onPress={sayGoodbye} hitSlop={8}>
+            <Text style={styles.goodbyeText}>{m.card.name}と さよならする</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -219,4 +248,6 @@ const styles = StyleSheet.create({
   keepTitle: { fontSize: 13.5, color: C.goldDeep, fontWeight: '800' },
   keepSub: { fontSize: 11, color: '#a78a52', marginTop: 2 },
   keepChevron: { fontSize: 22, color: '#cdb178', fontWeight: '800' },
+  goodbye: { alignItems: 'center', paddingVertical: 14, marginHorizontal: 16, marginTop: 2, marginBottom: 8 },
+  goodbyeText: { fontSize: 13, color: C.muted, fontWeight: '700', textDecorationLine: 'underline' },
 });
