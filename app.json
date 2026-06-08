@@ -2,7 +2,7 @@
   "expo": {
     "name": "うちのモン",
     "slug": "uchinomon",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "uchinomon",
@@ -11,6 +11,9 @@
       "supportsTablet": false,
       "bundleIdentifier": "app.starvingeffort.uchinomon",
       "infoPlist": {
+        "CFBundleDevelopmentRegion": "ja",
+        "CFBundleLocalizations": ["ja"],
+        "CFBundleAllowMixedLocalizations": true,
         "NSCameraUsageDescription": "おえかきを さつえいして、たんまつの なかだけで うごく モンスターに へんしんさせます。しゃしんは サーバーに おくられず、たんまつから そとに でません。",
         "NSPhotoLibraryUsageDescription": "えらんだ おえかきの しゃしんを よみこみます。しゃしんは サーバーに おくられず、たんまつの なかだけで しょりされます。",
         "NSFaceIDUsageDescription": "おうちのひと だけが かいいん とうろくや こうにゅうを できるように、Face ID で ほごしゃ かくにんを します。",
