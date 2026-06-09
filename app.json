@@ -2,7 +2,7 @@
   "expo": {
     "name": "うちのモン",
     "slug": "uchinomon",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "uchinomon",
@@ -12,7 +12,9 @@
       "bundleIdentifier": "app.starvingeffort.uchinomon",
       "infoPlist": {
         "CFBundleDevelopmentRegion": "ja",
-        "CFBundleLocalizations": ["ja"],
+        "CFBundleLocalizations": [
+          "ja"
+        ],
         "CFBundleAllowMixedLocalizations": true,
         "NSCameraUsageDescription": "おえかきを さつえいして、たんまつの なかだけで うごく モンスターに へんしんさせます。しゃしんは サーバーに おくられず、たんまつから そとに でません。",
         "NSPhotoLibraryUsageDescription": "えらんだ おえかきの しゃしんを よみこみます。しゃしんは サーバーに おくられず、たんまつの なかだけで しょりされます。",
@@ -77,8 +79,12 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#FDF6E9",
-          "dark": { "backgroundColor": "#FDF6E9" },
-          "android": { "backgroundColor": "#FDF6E9" }
+          "dark": {
+            "backgroundColor": "#FDF6E9"
+          },
+          "android": {
+            "backgroundColor": "#FDF6E9"
+          }
         }
       ],
       [
