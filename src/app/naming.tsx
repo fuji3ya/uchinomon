@@ -62,7 +62,9 @@ export default function Naming() {
     if (saving) return;
     setSaving(true);
     const now = Date.now();
-    if (!(await monsterStore.canIntake(now))) {
+    // Atomic gate: check the daily free limit AND spend the slot in one step so
+    // two rapid/parallel intakes can't both slip past the 1/day free cap.
+    if (!(await monsterStore.tryConsumeIntake(now))) {
       setSaving(false);
       router.replace('/parent-gate');
       return;

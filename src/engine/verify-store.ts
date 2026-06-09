@@ -26,8 +26,10 @@ const mk = (h: string, created: number, n: number) =>
   let s = new MonsterStore(memKV());
   check('first intake allowed', await s.canIntake(t0));
   check('next number starts at 1', (await s.nextNumber()) === 1);
+  check('tryConsumeIntake spends the slot', await s.tryConsumeIntake(t0));
   await s.addMonster(mk('d1', t0, await s.nextNumber()), t0);
   check('second intake same day blocked (free)', !(await s.canIntake(t0)));
+  check('tryConsumeIntake also blocked when limit reached', !(await s.tryConsumeIntake(t0)));
   check('intake allowed next day', await s.canIntake(t0 + DAY));
   check('next number increments', (await s.nextNumber()) === 2);
 

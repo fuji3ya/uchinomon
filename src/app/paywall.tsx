@@ -41,6 +41,15 @@ export default function Paywall() {
       if (ok) {
         await monsterStore.setPro(true);
         router.replace('/purchase-success');
+      } else {
+        // Payment may have gone through but the entitlement isn't active yet
+        // (Ask-to-Buy pending parental approval, or a propagation delay). Don't
+        // leave the user staring at a silent screen — the launch listener will
+        // grant Pro once it activates; meanwhile point them at Restore.
+        Alert.alert(
+          'うちのモン Pro',
+          'こうにゅうの かくにんに じかんが かかっています。おうちのひとの きょかまちの ばあいも あります。あとで せっていの「ふくげん」を おしてみてください。',
+        );
       }
     } catch (e: any) {
       if (!e?.userCancelled) Alert.alert('うちのモン Pro', NOT_READY);

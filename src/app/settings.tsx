@@ -1,10 +1,12 @@
+import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomBar, BOTTOM_BAR_HEIGHT } from '../components/bottom-bar';
 import { monsterStore } from '../engine/monster-store';
+import { configureIAP, restorePro } from '../iap';
 import { C, RADIUS, SHADOW } from '../theme/tokens';
 
 const LEGAL = {
@@ -17,8 +19,32 @@ export default function Settings() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [pro, setPro] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   useFocusEffect(useCallback(() => { monsterStore.isPro().then(setPro).catch(() => setPro(false)); }, []));
+
+  // Restore must be reachable INDEPENDENT of local pro state (Apple 3.1.1): a
+  // payer on a new device / after clearing data must recover Pro without the
+  // upgrade entry (which only shows when pro===false).
+  const onRestore = useCallback(async () => {
+    if (restoring) return;
+    setRestoring(true);
+    try {
+      configureIAP();
+      const ok = await restorePro();
+      if (ok) {
+        await monsterStore.setPro(true);
+        setPro(true);
+        Alert.alert('うちのモン Pro', 'こうにゅうを ふくげんしました。');
+      } else {
+        Alert.alert('うちのモン Pro', 'ふくげんできる こうにゅうが みつかりませんでした。');
+      }
+    } catch {
+      Alert.alert('うちのモン Pro', 'ストアに せつぞく できませんでした。じかんを おいて おためしください。');
+    } finally {
+      setRestoring(false);
+    }
+  }, [restoring]);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.paper }}>
@@ -35,6 +61,13 @@ export default function Settings() {
           )}
         </View>
 
+        <Pressable style={styles.rowWrap} onPress={onRestore} disabled={restoring}>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>{restoring ? 'ふくげん中…' : 'こうにゅうを ふくげんする'}</Text>
+            <Text style={styles.rowChevron}>›</Text>
+          </View>
+        </Pressable>
+
         <View style={styles.card}>
           <Text style={styles.sectionHead}>プライバシー</Text>
           <Text style={styles.privacy}>お子さまの えと なまえは、うちのモンの サーバーには おくりません。すべて この端末の中で しょりされます。</Text>
@@ -46,7 +79,7 @@ export default function Settings() {
         />
         <InfoRow
           label="このアプリについて"
-          body={'うちのモン  v1.0\n\nおえかきが いきものに なって、どうぶつえんで くらすアプリだよ。きりぬき・ずかん・るすちゅうの できごとは すべて この端末の中で つくられ、サーバーには おくられません。'}
+          body={`うちのモン  v${Constants.expoConfig?.version ?? '1.0.1'}\n\nおえかきが いきものに なって、どうぶつえんで くらすアプリだよ。きりぬき・ずかん・るすちゅうの できごとは すべて この端末の中で つくられ、サーバーには おくられません。`}
         />
 
         <LinkRow label="プライバシーポリシー" url={LEGAL.privacy} />

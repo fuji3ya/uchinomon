@@ -49,8 +49,7 @@ export class MonsterStore {
     return list.reduce((mx, m) => Math.max(mx, m.card.number), 0) + 1;
   }
 
-  // Daily intake gate. Pro = unlimited. Free = 1/day. The count is only spent on
-  // confirmed intake (addMonster), matching capture-choice's "きょうの1ぴきはへらない".
+  // Daily intake gate (READ-ONLY, for UI display). Pro = unlimited. Free = 1/day.
   async canIntake(nowMs: number): Promise<boolean> {
     if (await this.isPro()) return true;
     const today = Math.floor(nowMs / DAY);
@@ -60,15 +59,28 @@ export class MonsterStore {
     return rec.count < FREE_DAILY_INTAKE;
   }
 
-  async addMonster(m: Monster, nowMs: number): Promise<void> {
-    const list = await this.all();
-    list.push(m);
-    await this.save(list);
+  // ATOMIC gate: check the daily limit AND spend the slot in one read-modify-write,
+  // so the check and the consume can't be split by another intake (the previous
+  // canIntake()→…persist…→addMonster() design left a multi-hundred-ms window where
+  // two flows both passed the gate). Returns true if intake is allowed (and the
+  // slot is now spent for free users); false if the free daily limit is reached.
+  async tryConsumeIntake(nowMs: number): Promise<boolean> {
+    if (await this.isPro()) return true;
     const today = Math.floor(nowMs / DAY);
     const raw = await this.kv.get(K_INTAKE);
     const rec = raw ? (JSON.parse(raw) as { day: number; count: number }) : { day: today, count: 0 };
-    const count = rec.day === today ? rec.count + 1 : 1;
-    await this.kv.set(K_INTAKE, JSON.stringify({ day: today, count }));
+    const used = rec.day === today ? rec.count : 0;
+    if (used >= FREE_DAILY_INTAKE) return false;
+    await this.kv.set(K_INTAKE, JSON.stringify({ day: today, count: used + 1 }));
+    return true;
+  }
+
+  // Persist a monster. Does NOT touch the intake counter — the slot is spent by
+  // tryConsumeIntake() at the gate, so the count can't be double-spent or raced.
+  async addMonster(m: Monster, _nowMs: number): Promise<void> {
+    const list = await this.all();
+    list.push(m);
+    await this.save(list);
   }
 
   // Remove a monster from the zoo/dex (user-initiated "さよなら"). Does not touch
