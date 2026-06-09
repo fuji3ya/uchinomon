@@ -9,9 +9,9 @@ import { buyPro, configureIAP, getProPackage, iapReady, restorePro } from '../ia
 import { C, RADIUS, SHADOW } from '../theme/tokens';
 
 const BENEFITS = [
-  'おえかきを むせいげんに とりこめる',
-  'ずかんカードが ずっと のこる（30日で きえない）',
-  'はっけんログが ずっと ふえつづける',
+  'まいにち むせいげんに とりこめる（むりょうは 1にち 1ぴき）',
+  'すきな いきものを どんどん ずかんに ふやせる',
+  'これまでの おもいでは、むりょうでも ずっと のこります',
 ];
 
 const NOT_READY = 'ストアに せつぞく できませんでした。じかんを おいて もう いちど おためしください。';
@@ -73,7 +73,7 @@ export default function Paywall() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.closeWrap}><Text style={styles.close}>✕</Text></Pressable>
 
         <Text style={styles.title}>うちのモン Pro</Text>
-        <Text style={styles.lead}>おもいでを ずっと のこして、どうぶつえんを そだてよう。</Text>
+        <Text style={styles.lead}>まいにち すきなだけ とりこんで、どうぶつえんを そだてよう。</Text>
 
         <View style={styles.benefits}>
           {BENEFITS.map((b) => (

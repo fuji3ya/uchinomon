@@ -1,7 +1,10 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { ScrollView, Text } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { configureIAP, hasProEntitlement } from '../iap';
+import { monsterStore } from '../engine/monster-store';
 
 // Safety net: on a release build an unhandled JS error (incl. async/microtask
 // rejections that ErrorBoundary can't catch) is escalated to RCTFatal → SIGABRT
@@ -21,6 +24,21 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 // Root navigator. Tabs (どうぶつえん / ずかん / せってい) + the create-flow and
 // monetization screens as pushed routes. No NativeTabs / no worklet splash.
 export default function RootLayout() {
+  // Auto-restore the non-consumable Pro entitlement on launch: configure RC and,
+  // if StoreKit says this Apple ID owns Pro, re-grant the local flag. Fixes a
+  // reinstall / new-device paying user being silently demoted to free. Upgrade-
+  // only (never downgrades) so a transient offline check can't lock out a payer.
+  useEffect(() => {
+    (async () => {
+      try {
+        configureIAP();
+        if (await hasProEntitlement()) await monsterStore.setPro(true);
+      } catch {
+        /* non-fatal — Settings → Restore remains as the manual fallback */
+      }
+    })();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
