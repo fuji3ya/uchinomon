@@ -60,3 +60,18 @@ export async function hasProEntitlement(): Promise<boolean> {
     return false;
   }
 }
+
+// Fires whenever RevenueCat reports the customer info changed AND Pro is active.
+// Catches an OUT-OF-BAND grant: Ask-to-Buy parental approval (the PRIMARY flow
+// for a kids' app), a deferred/SCA bank approval, or the eventual reconcile
+// after a network drop mid-purchase. Upgrade-only — never revokes.
+export function addProListener(onActive: () => void): void {
+  if (Platform.OS !== 'ios' || !API_KEY) return;
+  try {
+    Purchases.addCustomerInfoUpdateListener((info) => {
+      if (info.entitlements.active[PRO_ENTITLEMENT]) onActive();
+    });
+  } catch {
+    /* best-effort; launch reconcile + manual Restore remain as fallbacks */
+  }
+}

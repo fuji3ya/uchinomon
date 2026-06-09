@@ -23,7 +23,6 @@ export type Welcome = { name: string; text: string; level: number };
 
 const DAY = 86_400_000;
 const FREE_DAILY_INTAKE = 1;
-const FREE_EXPIRE_DAYS = 30;
 
 export class MonsterStore {
   constructor(private kv: KV) {}
@@ -80,11 +79,13 @@ export class MonsterStore {
     await this.save(list.filter((m) => m.id !== id));
   }
 
-  // View-lock (NOT delete) for free users after 30 days (ENGINE_SPEC §7:
-  // "expire は削除ではなく閲覧ロック"). Pro / one-time-purchased stay unlocked.
-  async isLocked(m: Monster, nowMs: number, pro: boolean): Promise<boolean> {
-    if (pro || (m as Monster & { keptForever?: boolean }).keptForever) return false;
-    return nowMs - m.createdAtMs > FREE_EXPIRE_DAYS * DAY;
+  // Retention is FREE for everyone — memories are never view-locked. The paid
+  // value is unlimited daily intake (canIntake), not retention. (Policy change
+  // 2026-06-09: the old 30-day free-expiry view-lock was retired so the paywall's
+  // "おもいでは むりょうでも ずっと のこります" promise is honoured in the engine.)
+  // Signature kept for callers/tests; always returns false.
+  async isLocked(_m: Monster, _nowMs: number, _pro: boolean): Promise<boolean> {
+    return false;
   }
 
   // Run the while-away simulation for every monster since last open, append new

@@ -35,11 +35,11 @@ const mk = (h: string, created: number, n: number) =>
   await s.setPro(true);
   check('pro: intake allowed even same day', await s.canIntake(t0));
 
-  console.log('\n— 30-day view-lock (free), unlocked for pro —');
+  console.log('\n— retention is free for everyone (never view-locked) —');
   const m = mk('d2', t0, 1);
   check('not locked at day 10 (free)', !(await s.isLocked(m, t0 + 10 * DAY, false)));
-  check('locked at day 31 (free)', await s.isLocked(m, t0 + 31 * DAY, false));
-  check('NOT locked at day 31 (pro)', !(await s.isLocked(m, t0 + 31 * DAY, true)));
+  check('not locked at day 31 (free) — retention is free', !(await s.isLocked(m, t0 + 31 * DAY, false)));
+  check('not locked at day 31 (pro)', !(await s.isLocked(m, t0 + 31 * DAY, true)));
 
   console.log('\n— syncWorld appends discoveries + is idempotent —');
   s = new MonsterStore(memKV());

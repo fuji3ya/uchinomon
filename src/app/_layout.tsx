@@ -3,7 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ScrollView, Text } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { configureIAP, hasProEntitlement } from '../iap';
+import { addProListener, configureIAP, hasProEntitlement } from '../iap';
 import { monsterStore } from '../engine/monster-store';
 
 // Safety net: on a release build an unhandled JS error (incl. async/microtask
@@ -32,6 +32,11 @@ export default function RootLayout() {
     (async () => {
       try {
         configureIAP();
+        // Grant Pro the moment RC reports the entitlement active — catches
+        // Ask-to-Buy approval / deferred purchase / post-network-drop reconcile.
+        addProListener(() => {
+          monsterStore.setPro(true).catch(() => {});
+        });
         if (await hasProEntitlement()) await monsterStore.setPro(true);
       } catch {
         /* non-fatal — Settings → Restore remains as the manual fallback */
