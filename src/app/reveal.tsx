@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { monsterStore } from '../engine/monster-store';
 import { cardRarity } from '../engine/rarity';
 import type { Monster } from '../engine/types';
+import { recordValueMomentAndMaybeAskReview } from '../lib/review-ask';
 import { C, RADIUS, SHADOW } from '../theme/tokens';
 
 // Phase 4: birth reveal. The child's drawing "comes alive" — paper softens, the
@@ -52,6 +53,14 @@ export default function Reveal() {
     });
     return () => task.cancel();
   }, [m, paper, cut, glow, info, sparks]);
+
+  // Value moment: the reveal finished playing — count it, and from the second
+  // monster on, ask for a rating after a beat (kept off the first impression).
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(() => { void recordValueMomentAndMaybeAskReview(); }, 1200);
+    return () => clearTimeout(t);
+  }, [done]);
 
   if (!m) {
     return <SafeAreaView style={styles.safe}><View style={styles.center}><Text style={styles.dim}>よみこみ中…</Text></View></SafeAreaView>;
